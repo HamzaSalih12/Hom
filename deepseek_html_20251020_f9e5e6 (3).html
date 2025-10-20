@@ -1,0 +1,3943 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HR System - مديرية بلدية الشطرة</title>
+
+    <!-- استيراد خط Cairo من Google Fonts -->
+    <link 
+      href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" 
+      rel="stylesheet"
+    />
+
+    <!-- استيراد Bootstrap و FontAwesome -->
+    <link 
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" 
+      rel="stylesheet" 
+    />
+    <link 
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" 
+      rel="stylesheet" 
+    />
+
+    <!-- استيراد مكتبة Toastr للتنبيهات (CSS) -->
+    <link 
+      href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" 
+      rel="stylesheet"
+    />
+
+    <!-- استيراد مكتبة FullCalendar (CSS) -->
+    <link 
+      href="https://unpkg.com/fullcalendar@5.11.3/main.min.css" 
+      rel="stylesheet" 
+    />
+
+    <!-- تنسيقات مخصصة للواجهة -->
+    <style>
+        /* الخط العام والاتجاه */
+        body {
+            font-family: 'Cairo', Arial, sans-serif;
+            background: linear-gradient(135deg, #f0f2f5, #d9e2ec);
+            color: #2c3e50;
+            direction: rtl;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        /* رأس الصفحة مع تأثير الجسيمات */
+        header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            height: 70px;
+            z-index: 1030;
+            background: linear-gradient(135deg, #1a2980, #26d0ce);
+            color: #fff;
+            padding: 0 20px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: background 0.5s;
+        }
+        header.scrolled {
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+        }
+        header h1 {
+            font-weight: 700;
+            letter-spacing: 1px;
+            margin: 0;
+            font-size: 1.8rem;
+            display: flex;
+            align-items: center;
+        }
+
+        /* عنصر الجسيمات */
+        #particles-js {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        /* أيقونة التنبيهات */
+        .notification-icon {
+            position: relative;
+            cursor: pointer;
+            color: #fff;
+            font-size: 22px;
+            transition: color 0.3s;
+        }
+        .notification-icon:hover {
+            color: #ffd700;
+        }
+        /* شارة عدد الإشعارات */
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -10px;
+            background: #ff4d4d;
+            color: white;
+            border-radius: 50%;
+            padding: 2px 6px;
+            font-size: 10px;
+            font-weight: bold;
+        }
+        /* قائمة الإشعارات */
+        .notification-dropdown {
+            position: absolute;
+            top: 70px;
+            right: 20px;
+            background: #fff;
+            width: 320px;
+            max-height: 450px;
+            overflow-y: auto;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            border-radius: 8px;
+            display: none;
+            z-index: 1000;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        .notification-dropdown.active {
+            display: block;
+        }
+        .notification-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid #e0e0e0;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .notification-item:hover {
+            background-color: #f1f1f1;
+        }
+        .notification-item.unread {
+            background-color: #f9f9f9;
+            font-weight: bold;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* شريط التنقل الجانبي */
+        #sidebar-wrapper {
+            min-width: 220px;
+            max-width: 220px;
+            background-color: #ffffff;
+            border-left: 4px solid #ffc107;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            position: fixed;
+            top: 70px;
+            left: 0;
+            height: calc(100% - 70px);
+            overflow-y: auto;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            z-index: 1020;
+        }
+
+        #sidebar-wrapper.active {
+            transform: translateX(0);
+        }
+
+        #wrapper {
+            padding-top: 70px;
+        }
+
+        /* إخفاء الشريط الجانبي في الموبايل */
+        @media (max-width: 768px) {
+            #sidebar-wrapper {
+                transform: translateX(-100%);
+                box-shadow: none;
+            }
+            #sidebar-wrapper.active {
+                box-shadow: 2px 0 5px rgba(0,0,0,0.3);
+            }
+        }
+
+        /* الأزرار */
+        .btn-primary {
+            background-color: #0055aa;
+            border-color: #ffc107;
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+        .btn-primary:hover {
+            background-color: #003f8a;
+            border-color: #e0a800;
+        }
+        .btn-success, .btn-danger, .btn-warning, .btn-primary, .btn-info, .btn-secondary {
+            border-radius: 5px;
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+        .btn-success {
+            background-color: #28a745;
+            border-color: #28a745;
+        }
+        .btn-success:hover {
+            background-color: #218838;
+            border-color: #1e7e34;
+            color: #fff;
+        }
+        .btn-info {
+            background-color: #17a2b8;
+            border-color: #17a2b8;
+        }
+        .btn-info:hover {
+            background-color: #138496;
+            border-color: #117a8b;
+            color: #fff;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+            border-color: #6c757d;
+        }
+        .btn-secondary:hover {
+            background-color: #5a6268;
+            border-color: #545b62;
+        }
+        .btn-danger {
+            background-color: #dc3545;
+            border-color: #dc3545;
+        }
+        .btn-danger:hover {
+            background-color: #c82333;
+            border-color: #bd2130;
+            color: #fff;
+        }
+        .btn-warning {
+            background-color: #ffc107;
+            border-color: #ffc107;
+            color: #212529;
+        }
+        .btn-warning:hover {
+            background-color: #e0a800;
+            border-color: #d39e00;
+            color: #fff;
+        }
+
+        /* محتوى الصفحة */
+        #page-content-wrapper {
+            padding: 25px;
+            margin-left: 220px;
+            transition: margin-left 0.3s ease;
+            min-height: calc(100vh - 120px);
+        }
+
+        /* عند إخفاء الشريط الجانبي في الموبايل */
+        @media (max-width: 768px) {
+            #page-content-wrapper {
+                margin-left: 0;
+            }
+        }
+
+        /* الجداول */
+        table {
+            width: 100%;
+            margin: 25px 0;
+            background-color: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: center;
+            border: 1px solid #e0e0e0;
+            vertical-align: middle !important;
+            font-size: 0.95rem;
+        }
+        th {
+            background: #0055aa;
+            color: #fff;
+            cursor: pointer; 
+            font-size: 1rem;
+            position: relative;
+            user-select: none;
+        }
+        th i {
+            margin-right: 5px;
+            font-size: 0.8rem;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+
+        /* صندوق البحث */
+        .search-box {
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+
+        /* أقسام الصفحة */
+        .section {
+            display: none;
+        }
+
+        /* الفوتر (سيتم إخفاؤه عند التمرير) */
+        footer {
+            text-align: center;
+            background-color: #0055aa;
+            color: #fff;
+            padding: 15px 0;
+            margin-top: 25px;
+            border-top: 4px solid #ffc107;
+            box-shadow: 0 -4px 8px rgba(0,0,0,0.2);
+            position: relative;
+            width: 100%;
+            z-index: 1000;
+            font-size: 0.85rem;
+            transition: transform 0.3s;
+        }
+
+        /* رسائل الحالة */
+        #statusMessage {
+            color: green; 
+            font-weight: bold; 
+            text-align: center; 
+            margin-top: 15px;
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 2000;
+            width: 90%;
+            max-width: 500px;
+        }
+
+        /* مؤشرات بصرية للحالات المختلفة */
+        .status-pending {
+            background-color: #f0ad4e;
+            color: #fff;
+            border-radius: 4px;
+            padding: 4px 8px;
+            display: inline-block;
+            font-size: 0.85rem;
+        }
+        .status-approved {
+            background-color: #28a745;
+            color: #fff;
+            border-radius: 4px;
+            padding: 4px 8px;
+            display: inline-block;
+            font-size: 0.85rem;
+        }
+        .status-rejected {
+            background-color: #dc3545;
+            color: #fff;
+            border-radius: 4px;
+            padding: 4px 8px;
+            display: inline-block;
+            font-size: 0.85rem;
+        }
+
+        /* تنسيقات المودال */
+        .modal-header {
+            background-color: #0055aa;
+            color: #fff;
+            border-bottom: none;
+        }
+        .modal-title {
+            font-weight: 600;
+        }
+        .modal-body {
+            font-size: 0.95rem;
+        }
+        .modal-footer {
+            border-top: none;
+        }
+
+        /* لوحة المعلومات الشخصية */
+        #dashboardSection .card {
+            margin: 15px 0;
+            border-radius: 10px;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+        }
+        #dashboardSection .card-body {
+            padding: 20px;
+        }
+
+        /* بطاقات الإحصائيات */
+        .stat-card {
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            padding: 20px;
+            margin-bottom: 20px;
+            transition: transform 0.3s;
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        .stat-card .stat-icon {
+            font-size: 3rem;
+            opacity: 0.8;
+        }
+        .stat-card h3 {
+            font-size: 1.2rem;
+            margin-top: 15px;
+        }
+        .stat-card p {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin: 0;
+        }
+        .bg-card-1 { background: linear-gradient(45deg, #2980b9, #3498db); }
+        .bg-card-2 { background: linear-gradient(45deg, #27ae60, #2ecc71); }
+        .bg-card-3 { background: linear-gradient(45deg, #f39c12, #f1c40f); }
+        .bg-card-4 { background: linear-gradient(45deg, #c0392b, #e74c3c); }
+
+        /* مؤشر تحميل */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+        .custom-spinner {
+            font-size: 3rem;
+            color: #ffc107;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* تحسينات إضافية */
+        .btn i {
+            margin-left: 5px;
+        }
+        .tooltip-inner {
+            background-color: #ffc107;
+            color: #000;
+            font-size: 0.85rem;
+        }
+        .tooltip.bs-tooltip-right .tooltip-arrow::before,
+        .tooltip.bs-tooltip-left .tooltip-arrow::before,
+        .tooltip.bs-tooltip-top .tooltip-arrow::before,
+        .tooltip.bs-tooltip-bottom .tooltip-arrow::before {
+            border-color: #ffc107;
+        }
+
+        /* تحسينات Responsive (توافق مع الشاشات الأصغر) */
+        @media (max-width: 992px) {
+            #sidebar-wrapper {
+                transform: translateX(-100%);
+            }
+            #sidebar-wrapper.active {
+                transform: translateX(0);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .notification-dropdown {
+                right: 20px;
+                width: 320px;
+            }
+            .modal-dialog {
+                max-width: 95%;
+                margin: auto;
+            }
+            #dashboardSection .card {
+                margin: 10px 0;
+            }
+            .stat-card {
+                padding: 15px;
+            }
+            .stat-card p {
+                font-size: 2rem;
+            }
+        }
+
+        @media (max-width: 576px) {
+            header h1 {
+                font-size: 1.4rem;
+            }
+            .notification-icon {
+                font-size: 20px;
+            }
+            .notification-badge {
+                font-size: 10px;
+                padding: 1px 5px;
+            }
+            .modal-dialog {
+                max-width: 100%;
+                margin: 10px;
+            }
+            #page-content-wrapper {
+                padding: 15px;
+            }
+        }
+
+        /* تحسين الأيقونات في الشريط الجانبي */
+        #sidebar-wrapper .list-group-item {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding: 12px 20px;
+            transition: background-color 0.3s;
+        }
+        #sidebar-wrapper .list-group-item:hover {
+            background-color: #f1f1f1;
+        }
+        #sidebar-wrapper .list-group-item i {
+            margin-left: 10px;
+            font-size: 1.1rem;
+        }
+
+        /* طبقة الترحيب */
+        #welcomeOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #141e30, #243b55);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 3000;
+            color: #fff;
+            flex-direction: column;
+            text-align: center;
+            padding: 20px;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+        }
+        #welcomeOverlay.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+        #welcomeOverlay h1 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            background: linear-gradient(90deg, #1abc9c, #16a085);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: slideIn 1.5s ease-out forwards;
+        }
+        #welcomeOverlay p {
+            font-size: 1.5rem;
+            margin-bottom: 35px;
+            color: #ecf0f1;
+            opacity: 0;
+            animation: fadeIn 2s ease-out forwards 1s;
+        }
+        #welcomeOverlay button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 15px 35px;
+            font-size: 1.1rem;
+            color: #fff;
+            background: linear-gradient(45deg, #1abc9c, #16a085);
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: transform 0.3s, background 0.3s, opacity 0.3s;
+            opacity: 0;
+            animation: fadeIn 2s ease-out forwards 1.5s;
+        }
+        #welcomeOverlay button i {
+            margin-left: 10px;
+            transition: margin-left 0.3s;
+        }
+        #welcomeOverlay button:hover {
+            transform: translateY(-5px);
+            background: linear-gradient(45deg, #16a085, #1abc9c);
+            opacity: 1;
+        }
+        #welcomeOverlay button:hover i {
+            margin-left: 15px;
+        }
+
+        /* زر عائم لفتح قسم إدارة الإجازات */
+        .floating-button {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            background-color: #28a745;
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1500;
+            transition: background-color 0.3s, transform 0.3s;
+        }
+        .floating-button:hover {
+            background-color: #218838;
+            transform: scale(1.1);
+        }
+        .floating-button i {
+            font-size: 24px;
+        }
+
+        /* زر حذف جميع الإجازات الزمنية السابقة */
+        .btn-delete-past-time-leaves {
+            background-color: #dc3545;
+            border-color: #dc3545;
+            color: #fff;
+        }
+        .btn-delete-past-time-leaves:hover {
+            background-color: #c82333;
+            border-color: #bd2130;
+            color: #fff;
+        }
+
+        /* صندوق البحث في لوحة المعلومات */
+        .dashboard-search-box {
+            margin-bottom: 20px;
+        }
+        
+        /* تحسينات للجداول في الشاشات الصغيرة */
+        .table-responsive {
+            overflow-x: auto;
+        }
+        
+        /* تحسينات للقوائم المنسدلة */
+        .list-group-item-action {
+            cursor: pointer;
+        }
+
+        /* تنسيقات خاصة بالطباعة */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+
+            #print-container, #print-container * {
+                visibility: visible;
+            }
+
+            #print-container {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                padding: 15px;
+                margin: 0;
+            }
+            
+            #print-container .no-print {
+                display: none !important;
+            }
+
+            #print-container h2, #print-container h4, #print-container h5, #print-container p, #print-container h6 {
+                color: #000 !important;
+            }
+
+            #print-container .table, #print-container .table-bordered, #print-container .table th, #print-container .table td {
+                border: 1px solid #000 !important;
+                color: #000 !important;
+            }
+            
+            #print-container .table-light {
+                background-color: #fff !important; 
+            }
+        }
+
+        /* تحسينات إضافية للتوافق */
+        .form-control:focus, .form-select:focus {
+            border-color: #0055aa;
+            box-shadow: 0 0 0 0.2rem rgba(0, 85, 170, 0.25);
+        }
+
+        /* تحسينات للوصول الشامل */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+    </style>
+</head>
+
+<body>
+    <!-- طبقة الترحيب -->
+    <div id="welcomeOverlay">
+        <h1>مديرية بلدية الشطرة</h1>
+        <p>نحن هنا لجعل يومك أكثر إشراقًا!</p>
+        <button id="startButton">
+            ابدأ الآن <i class="fas fa-arrow-right"></i>
+        </button>
+    </div>
+
+    <!-- مؤشر التحميل -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <i class="fas fa-spinner custom-spinner"></i>
+    </div>
+
+    <!-- رأس الصفحة مع تأثير الجسيمات -->
+    <header>
+        <div id="particles-js"></div>
+        <div class="d-flex align-items-center justify-content-between w-100">
+            <button class="navbar-toggler text-white" type="button" onclick="toggleSidebar()" aria-label="Toggle navigation">
+                <i class="fas fa-bars"></i>
+            </button>
+            <h1>HR System</h1>
+
+            <!-- أيقونة التنبيهات -->
+            <div class="notification-icon" onclick="toggleNotifications()" data-bs-toggle="tooltip" data-bs-placement="bottom" title="عرض الإشعارات">
+                <i class="fas fa-bell"></i>
+                <span id="notificationBadge" class="notification-badge" style="display: none;">0</span>
+            </div>
+        </div>
+        <!-- قائمة الإشعارات -->
+        <div id="notificationsContainer" class="notification-dropdown"></div>
+    </header>
+
+    <!-- شريط التنقل الجانبي -->
+    <nav id="sidebar-wrapper">
+        <div class="sidebar-heading px-3 py-3 border-bottom">القائمة</div>
+        <div class="list-group list-group-flush">
+            <a href="#" class="list-group-item list-group-item-action" onclick="showSection('dashboardSection')" data-bs-toggle="tooltip" data-bs-placement="right" title="عرض لوحة المعلومات">
+                <i class="fas fa-chart-line"></i> لوحة المعلومات
+            </a>
+            <a href="#" class="list-group-item list-group-item-action" onclick="showSection('departmentSection')" data-bs-toggle="tooltip" data-bs-placement="right" title="إدارة الأقسام">
+                <i class="fas fa-building"></i> إدارة الأقسام
+            </a>
+            <a href="#" class="list-group-item list-group-item-action" onclick="showSection('employeeSection')" data-bs-toggle="tooltip" data-bs-placement="right" title="إدارة الموظفين">
+                <i class="fas fa-users"></i> إدارة الموظفين
+            </a>
+            <a href="#" class="list-group-item list-group-item-action" onclick="showSection('leaveSection')" data-bs-toggle="tooltip" data-bs-placement="right" title="إدارة الإجازات">
+                <i class="fas fa-calendar-alt"></i> إدارة الإجازات
+            </a>
+            <a href="#" class="list-group-item list-group-item-action" onclick="showSection('tardinessSection')" data-bs-toggle="tooltip" data-bs-placement="right" title="إدارة التأخيرات">
+                <i class="fas fa-clock"></i> إدارة التأخيرات
+            </a>
+            <a href="#" class="list-group-item list-group-item-action" onclick="showSection('reportsSection')" data-bs-toggle="tooltip" data-bs-placement="right" title="التحليل والتقارير">
+                <i class="fas fa-chart-pie"></i> التحليل والتقارير
+            </a>
+            <a href="#" class="list-group-item list-group-item-action" onclick="showSection('settingsSection')" data-bs-toggle="tooltip" data-bs-placement="right" title="الإعدادات">
+                <i class="fas fa-cog"></i> الإعدادات
+            </a>
+            <a href="#" class="list-group-item list-group-item-action" onclick="backupData()" data-bs-toggle="tooltip" data-bs-placement="right" title="نسخ البيانات احتياطيًا">
+                <i class="fas fa-database"></i> نسخ احتياطي
+            </a>
+            <a href="#" class="list-group-item list-group-item-action" onclick="restoreData()" data-bs-toggle="tooltip" data-bs-placement="right" title="استعادة النسخة الاحتياطية">
+                <i class="fas fa-undo"></i> استعادة النسخة
+            </a>
+            <a href="#" class="list-group-item list-group-item-action btn-delete-past-time-leaves" onclick="deleteAllPastTimeLeaves()" data-bs-toggle="tooltip" data-bs-placement="right" title="حذف جميع الإجازات الزمنية السابقة">
+                <i class="fas fa-trash-alt"></i> حذف الإجازات الزمنية السابقة
+            </a>
+        </div>
+    </nav>
+
+    <!-- التفاف رئيسي لاحتواء المحتوى -->
+    <div id="wrapper">
+        <!-- المحتوى الرئيسي -->
+        <div id="page-content-wrapper">
+            <div class="container-fluid">
+                <!-- أقسام المشروع (مخفية افتراضيًا) -->
+
+                <!-- قسم لوحة المعلومات (Dashboard) -->
+                <div id="dashboardSection" class="section">
+                    <h3>لوحة المعلومات</h3>
+                    
+                    <div class="row">
+                        <!-- Card 1: Departments -->
+                        <div class="col-lg-3 col-md-6 col-sm-6 mb-3">
+                            <div class="stat-card bg-card-1 text-center">
+                                <i class="fas fa-building stat-icon"></i>
+                                <h3>عدد الأقسام</h3>
+                                <p id="statsDepartments">0</p>
+                            </div>
+                        </div>
+                        <!-- Card 2: Employees -->
+                        <div class="col-lg-3 col-md-6 col-sm-6 mb-3">
+                            <div class="stat-card bg-card-2 text-center">
+                                <i class="fas fa-users stat-icon"></i>
+                                <h3>عدد الموظفين</h3>
+                                <p id="statsEmployees">0</p>
+                            </div>
+                        </div>
+                        <!-- Card 3: Approved Leaves -->
+                        <div class="col-lg-3 col-md-6 col-sm-6 mb-3">
+                            <div class="stat-card bg-card-3 text-center">
+                                <i class="fas fa-calendar-check stat-icon"></i>
+                                <h3>الإجازات النشطة حاليًا</h3>
+                                <p id="statsApprovedLeaves">0</p>
+                            </div>
+                        </div>
+                        <!-- Card 4: Pending Leaves -->
+                        <div class="col-lg-3 col-md-6 col-sm-6 mb-3">
+                            <div class="stat-card bg-card-4 text-center">
+                                <i class="fas fa-hourglass-half stat-icon"></i>
+                                <h3>طلبات قيد الانتظار</h3>
+                                <p id="statsPendingLeaves">0</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="my-4"/>
+
+                    <h4>تفاصيل إجازات الموظفين</h4>
+                    <div class="dashboard-search-box">
+                        <input 
+                          type="text" 
+                          class="form-control" 
+                          id="dashboardSearch" 
+                          oninput="searchDashboard()" 
+                          placeholder="ابحث عن موظف..." 
+                          aria-label="بحث عن موظف"
+                        />
+                    </div>
+
+                    <p>اختر موظفًا لعرض تفاصيل الإجازات الخاصة به:</p>
+                    <select 
+                        class="form-select mt-3 mb-4" 
+                        id="dashboardEmployeeSelect"
+                        onchange="renderPersonalDashboard()"
+                    >
+                        <option value="">اختر الموظف</option>
+                    </select>
+
+                    <div id="dashboardContent" class="row"></div>
+                </div>
+
+                <!-- قسم إدارة الأقسام -->
+                <div id="departmentSection" class="section">
+                    <h3>إدارة الأقسام</h3>
+                    <div class="input-group mb-4">
+                        <input 
+                          class="form-control" 
+                          id="newDepartmentName" 
+                          placeholder="اسم القسم" 
+                          type="text" 
+                          aria-label="اسم القسم"
+                        />
+                        <input
+                          class="form-control"
+                          id="newDepartmentLimit"
+                          type="number"
+                          min="1"
+                          placeholder="الحد الأقصى للإجازات"
+                          aria-label="الحد الأقصى للإجازات بنفس اليوم"
+                        />
+                        <button class="btn btn-success" onclick="addDepartment()" data-bs-toggle="tooltip" data-bs-placement="top" title="إضافة قسم">
+                            <i class="fas fa-plus"></i> إضافة
+                        </button>
+                    </div>
+
+                    <button class="btn btn-danger mb-4" onclick="deleteAllDepartments()" data-bs-toggle="tooltip" data-bs-placement="top" title="حذف جميع الأقسام">
+                        <i class="fas fa-trash-alt"></i> حذف جميع الأقسام
+                    </button>
+
+                    <input 
+                      class="form-control search-box mb-4" 
+                      id="departmentSearch" 
+                      oninput="filterTable('departmentSearch', 'departmentTableBody')" 
+                      placeholder="ابحث عن قسم..." 
+                      type="text"
+                      aria-label="بحث عن قسم"
+                    />
+
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm table-striped table-hover" id="departmentTable">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th onclick="sortTable('departmentTable', 0)">اسم القسم <i class="fas fa-sort"></i></th>
+                                    <th onclick="sortTable('departmentTable', 1, 'number')">الحد الأقصى للإجازات <i class="fas fa-sort"></i></th>
+                                    <th>إجراء</th>
+                                </tr>
+                            </thead>
+                            <tbody id="departmentTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- قسم إدارة الموظفين -->
+                <div id="employeeSection" class="section">
+                    <h3>إدارة الموظفين</h3>
+                    <div class="input-group mb-4">
+                        <input 
+                          class="form-control" 
+                          id="newEmployee" 
+                          placeholder="اسم الموظف" 
+                          type="text" 
+                          aria-label="اسم الموظف"
+                        />
+                         <select 
+                            class="form-select" 
+                            id="departmentSelect"
+                            aria-label="اختيار القسم"
+                          >
+                              <option value="">اختر القسم</option>
+                          </select>
+                        <button class="btn btn-success" onclick="addEmployee()" data-bs-toggle="tooltip" data-bs-placement="top" title="إضافة موظف">
+                            <i class="fas fa-plus"></i> إضافة
+                        </button>
+                    </div>
+
+                    <select 
+                      class="form-select mb-4" 
+                      id="employeeTypeSelect"
+                      onchange="toggleAnnualLeavesInput()"
+                      aria-label="اختيار نوع الموظف"
+                    >
+                        <option value="">اختر نوع الموظف</option>
+                        <option value="permanent">دائم (36 يوم/سنة)</option>
+                        <option value="daily">أجر يومي (يومان/شهر)</option>
+                    </select>
+
+                    <div id="annualLeavesContainer" class="mb-4" style="display: none;">
+                        <label for="annualLeaves" class="form-label">رصيد الإجازات السنوي (اختياري)</label>
+                        <input 
+                          class="form-control" 
+                          id="annualLeaves" 
+                          placeholder="اتركه فارغًا للافتراضي" 
+                          type="number" 
+                          min="0"
+                          aria-label="رصيد الإجازات"
+                        />
+                    </div>
+
+                    <button class="btn btn-danger mb-4" onclick="deleteAllEmployees()" data-bs-toggle="tooltip" data-bs-placement="top" title="حذف جميع الموظفين">
+                        <i class="fas fa-trash-alt"></i> حذف جميع الموظفين
+                    </button>
+                    
+                    <input 
+                      class="form-control search-box mb-4" 
+                      id="employeeSearch" 
+                      oninput="filterTable('employeeSearch', 'employeeTableBody')" 
+                      placeholder="ابحث عن موظف..." 
+                      type="text"
+                      aria-label="بحث عن موظف"
+                    />
+                    
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm table-striped table-hover" id="employeeTable">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th onclick="sortTable('employeeTable', 0)">اسم الموظف <i class="fas fa-sort"></i></th>
+                                    <th onclick="sortTable('employeeTable', 1)">نوع الموظف <i class="fas fa-sort"></i></th>
+                                    <th onclick="sortTable('employeeTable', 2)">القسم <i class="fas fa-sort"></i></th>
+                                    <th onclick="sortTable('employeeTable', 3, 'number')">رصيد الإجازات <i class="fas fa-sort"></i></th>
+                                    <th>إجراء</th>
+                                </tr>
+                            </thead>
+                            <tbody id="employeeTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- قسم إدارة الإجازات -->
+                <div id="leaveSection" class="section">
+                    <h3>إدارة الإجازات</h3>
+                    
+                    <button class="btn btn-secondary mb-4" onclick="openLeaveTypeModal()" data-bs-toggle="tooltip" data-bs-placement="top" title="إدارة أنواع الإجازة">
+                        <i class="fas fa-edit"></i> إدارة أنواع الإجازة
+                    </button>
+
+                    <div class="mb-3 position-relative">
+                        <input
+                          type="text"
+                          class="form-control"
+                          id="leaveEmployeeSearch"
+                          placeholder="ابحث عن اسم الموظف..."
+                          aria-label="بحث عن موظف"
+                          autocomplete="off"
+                        />
+                        <div id="employeeSearchResults" class="list-group position-absolute w-100" style="z-index: 1050; display: none;"></div>
+                        <input type="hidden" id="selectedEmployeeId">
+                    </div>
+                    <p id="selectedEmployeeDepartment" class="mb-4 text-muted"></p>
+
+                    <input 
+                      class="form-control mb-4" 
+                      id="leaveStartDate" 
+                      type="date" 
+                      placeholder="تاريخ بدء الإجازة"
+                      aria-label="تاريخ بدء الإجازة"
+                    />
+
+                    <div class="row mb-4" id="leaveTimeFields" style="display: none;">
+                        <div class="col-md-6 mb-2">
+                            <input 
+                              class="form-control" 
+                              id="leaveFromTime" 
+                              placeholder="من توقيت" 
+                              type="time"
+                              aria-label="من توقيت"
+                            />
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <input 
+                              class="form-control" 
+                              id="leaveToTime" 
+                              placeholder="إلى توقيت" 
+                              type="time"
+                              aria-label="إلى توقيت"
+                            />
+                        </div>
+                    </div>
+
+                    <div class="mb-4" id="leaveDaysContainer">
+                        <input 
+                          class="form-control" 
+                          id="leaveDays" 
+                          placeholder="عدد أيام الإجازة" 
+                          type="number" 
+                          min="1"
+                          aria-label="عدد أيام الإجازة"
+                        />
+                    </div>
+
+                    <select 
+                      class="form-select mb-4" 
+                      id="leaveType"
+                      onchange="toggleLeaveFields()"
+                      aria-label="اختيار نوع الإجازة"
+                    >
+                        <option value="">اختر نوع الإجازة</option>
+                    </select>
+
+                    <textarea 
+                      class="form-control mb-4" 
+                      id="leaveNotes" 
+                      placeholder="ملاحظات الإجازة"
+                      aria-label="ملاحظات الإجازة"
+                    ></textarea>
+
+                    <button class="btn btn-success mb-4" onclick="addLeave()" data-bs-toggle="tooltip" data-bs-placement="top" title="إضافة إجازة">
+                        <i class="fas fa-plus"></i> إضافة إجازة
+                    </button>
+
+                    <button class="btn btn-warning mb-4 ms-2" onclick="openAddPastTimeLeaveModal()" data-bs-toggle="tooltip" data-bs-placement="top" title="إضافة إجازة زمنية سابقة للموظف">
+                        <i class="fas fa-history"></i> إضافة إجازة سابقة
+                    </button>
+
+                    <button class="btn btn-danger mb-4 ms-2" onclick="deleteAllLeaves()" data-bs-toggle="tooltip" data-bs-placement="top" title="حذف جميع الإجازات">
+                        <i class="fas fa-trash-alt"></i> حذف جميع الإجازات
+                    </button>
+                    
+                     <div class="row mt-4">
+                        <div class="col-12 col-md-3 mb-3">
+                             <input type="text" class="form-control" id="leaveTableSearch" oninput="applyFilters()" placeholder="بحث في الجدول..." aria-label="بحث في الجدول">
+                        </div>
+                        <div class="col-6 col-md-2 mb-3">
+                            <select class="form-select" id="filterType" onchange="applyFilters()" aria-label="تصفية حسب نوع الإجازة">
+                                <option value="">كل الأنواع</option>
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-2 mb-3">
+                            <select class="form-select" id="filterStatus" onchange="applyFilters()" aria-label="تصفية حسب الحالة">
+                                <option value="">كل الحالات</option>
+                                <option value="pending">قيد الانتظار</option>
+                                <option value="approved">مقبولة</option>
+                                <option value="rejected">مرفوضة</option>
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-2 mb-3">
+                            <input type="date" class="form-control" id="filterStartDate" onchange="applyFilters()" placeholder="تاريخ البداية من" aria-label="تاريخ البداية من">
+                        </div>
+                        <div class="col-6 col-md-3 mb-3">
+                            <input type="date" class="form-control" id="filterEndDate" onchange="applyFilters()" placeholder="تاريخ النهاية إلى" aria-label="تاريخ النهاية إلى">
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm table-striped table-hover" id="leaveTable">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>تحديد</th>
+                                    <th onclick="sortTable('leaveTable', 1)">اسم الموظف <i class="fas fa-sort"></i></th>
+                                    <th onclick="sortTable('leaveTable', 2, 'date')">تاريخ الإجازة <i class="fas fa-sort"></i></th>
+                                    <th onclick="sortTable('leaveTable', 3, 'date')">تاريخ الانتهاء <i class="fas fa-sort"></i></th>
+                                    <th>عدد الأيام/الساعات</th>
+                                    <th onclick="sortTable('leaveTable', 5)">نوع الإجازة <i class="fas fa-sort"></i></th>
+                                    <th onclick="sortTable('leaveTable', 6)">القسم <i class="fas fa-sort"></i></th>
+                                    <th onclick="sortTable('leaveTable', 7)">الحالة <i class="fas fa-sort"></i></th>
+                                    <th>إجراء</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leaveTableBody"></tbody>
+                        </table>
+                    </div>
+
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-center">
+                        <div id="pagination" class="d-flex justify-content-center mt-4"></div>
+
+                        <button class="btn btn-info mb-4" onclick="openExportOptionsModal(false)" data-bs-toggle="tooltip" data-bs-placement="top" title="تصدير الإجازات المحددة">
+                            <i class="fas fa-file-export"></i> تصدير المحدد
+                        </button>
+                    
+                        <button class="btn btn-secondary mb-4 ms-2" onclick="openPrintOptionsModal(false)" data-bs-toggle="tooltip" data-bs-placement="top" title="طباعة الإجازات المحددة">
+                            <i class="fas fa-print"></i> طباعة المحدد
+                        </button>
+                    </div>
+
+                    <canvas id="leaveChart" class="mt-5" width="400" height="200"></canvas>
+                    <div id="calendar" class="mt-5"></div>
+                </div>
+
+                <!-- قسم إدارة التأخيرات -->
+                <div id="tardinessSection" class="section">
+                    <h3>إدارة التأخيرات</h3>
+                    <p>قم بتسجيل الموظفين المتأخرين عن الدوام. الحد المسموح به هو تأخيرين في الشهر.</p>
+                    
+                    <div class="mb-3 position-relative">
+                        <input
+                          type="text"
+                          class="form-control"
+                          id="tardinessEmployeeSearch"
+                          placeholder="ابحث عن اسم الموظف..."
+                          aria-label="بحث عن موظف"
+                          autocomplete="off"
+                        />
+                        <div id="tardinessEmployeeSearchResults" class="list-group position-absolute w-100" style="z-index: 1050; display: none;"></div>
+                        <input type="hidden" id="selectedTardinessEmployeeId">
+                    </div>
+                    <p id="selectedTardinessEmployeeDepartment" class="mb-4 text-muted"></p>
+
+                    <input 
+                      class="form-control mb-4" 
+                      id="tardinessDate" 
+                      type="date" 
+                      placeholder="تاريخ التأخير"
+                      aria-label="تاريخ التأخير"
+                    />
+
+                    <button class="btn btn-success mb-4" onclick="addTardinessRecord()" data-bs-toggle="tooltip" data-bs-placement="top" title="إضافة تأخير">
+                        <i class="fas fa-plus"></i> إضافة تأخير
+                    </button>
+
+                    <button class="btn btn-danger mb-4 ms-2" onclick="deleteAllTardinessRecords()" data-bs-toggle="tooltip" data-bs-placement="top" title="حذف جميع التأخيرات">
+                        <i class="fas fa-trash-alt"></i> حذف جميع التأخيرات
+                    </button>
+                    
+                    <input 
+                      class="form-control search-box mb-4" 
+                      id="tardinessSearch" 
+                      oninput="filterTable('tardinessSearch', 'tardinessTableBody')" 
+                      placeholder="ابحث..." 
+                      type="text"
+                      aria-label="بحث في التأخيرات"
+                    />
+
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm table-striped table-hover" id="tardinessTable">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th onclick="sortTable('tardinessTable', 0)">اسم الموظف <i class="fas fa-sort"></i></th>
+                                    <th onclick="sortTable('tardinessTable', 1)">القسم <i class="fas fa-sort"></i></th>
+                                    <th onclick="sortTable('tardinessTable', 2, 'date')">تاريخ التأخير <i class="fas fa-sort"></i></th>
+                                    <th>إجراء</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tardinessTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- قسم التقارير والتحليل -->
+                <div id="reportsSection" class="section">
+                    <h3>التحليل والتقارير المتقدمة</h3>
+                    <p>استكشف البيانات عبر تقارير ورسوم بيانية تفاعلية.</p>
+
+                    <!-- Tabs Navigation -->
+                    <ul class="nav nav-tabs mt-4" id="analysisTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="daily-report-tab" data-bs-toggle="tab" data-bs-target="#daily-report" type="button" role="tab" aria-controls="daily-report" aria-selected="true">تقرير يومي</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="aggregated-report-tab" data-bs-toggle="tab" data-bs-target="#aggregated-report" type="button" role="tab" aria-controls="aggregated-report" aria-selected="false">تقارير مجمعة</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="custom-report-tab" data-bs-toggle="tab" data-bs-target="#custom-report" type="button" role="tab" aria-controls="custom-report" aria-selected="false">تقارير مخصصة</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="charts-tab" data-bs-toggle="tab" data-bs-target="#charts-analysis" type="button" role="tab" aria-controls="charts-analysis" aria-selected="false">تحليل بياني</button>
+                        </li>
+                    </ul>
+
+                    <!-- Tabs Content -->
+                    <div class="tab-content pt-4" id="analysisTabsContent">
+                        <!-- Daily Report Tab -->
+                        <div class="tab-pane fade show active" id="daily-report" role="tabpanel" aria-labelledby="daily-report-tab">
+                            <h5>إنشاء تقرير يومي</h5>
+                            <p>اختر التاريخ لإنشاء تقرير مفصل بالإجازات والتأخيرات والغيابات.</p>
+                            <div class="row align-items-end mb-4 no-print">
+                                <div class="col-md-4">
+                                    <label for="reportDate" class="form-label">تاريخ التقرير</label>
+                                    <input type="date" class="form-control" id="reportDate">
+                                </div>
+                                <div class="col-md-4">
+                                    <button class="btn btn-primary" onclick="generateDailyReport()"><i class="fas fa-cogs"></i> إنشاء التقرير</button>
+                                </div>
+                            </div>
+                            <div id="reportContainer">
+                                <!-- Daily report content will be injected here -->
+                            </div>
+                        </div>
+
+                        <!-- Aggregated Report Tab -->
+                        <div class="tab-pane fade" id="aggregated-report" role="tabpanel" aria-labelledby="aggregated-report-tab">
+                            <h5>إنشاء تقرير شهري أو سنوي</h5>
+                             <div class="row align-items-end mb-4">
+                                <div class="col-md-3">
+                                    <label for="aggReportType" class="form-label">نوع التقرير</label>
+                                    <select id="aggReportType" class="form-select" onchange="toggleAggReportInputs()">
+                                        <option value="monthly">شهري</option>
+                                        <option value="yearly">سنوي</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="aggReportYear" class="form-label">السنة</label>
+                                    <select id="aggReportYear" class="form-select"></select>
+                                </div>
+                                <div id="aggMonthContainer" class="col-md-3">
+                                    <label for="aggReportMonth" class="form-label">الشهر</label>
+                                    <select id="aggReportMonth" class="form-select">
+                                        <option value="1">يناير</option> <option value="2">فبراير</option> <option value="3">مارس</option>
+                                        <option value="4">أبريل</option> <option value="5">مايو</option> <option value="6">يونيو</option>
+                                        <option value="7">يوليو</option> <option value="8">أغسطس</option> <option value="9">سبتمبر</option>
+                                        <option value="10">أكتوبر</option> <option value="11">نوفمبر</option> <option value="12">ديسمبر</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <button class="btn btn-primary w-100" onclick="generateAggregatedReport()"><i class="fas fa-cogs"></i> إنشاء التقرير</button>
+                                </div>
+                            </div>
+                            <div id="aggregatedReportContainer"></div>
+                        </div>
+
+                        <!-- Custom Report Tab -->
+                        <div class="tab-pane fade" id="custom-report" role="tabpanel" aria-labelledby="custom-report-tab">
+                            <h5>إنشاء تقرير مخصص</h5>
+                            <div class="row align-items-end mb-4">
+                                <div class="col-md-3">
+                                    <label for="customReportTarget" class="form-label">الهدف</label>
+                                    <select id="customReportTarget" class="form-select" onchange="toggleCustomReportSelect()">
+                                        <option value="employee">موظف</option>
+                                        <option value="department">قسم</option>
+                                    </select>
+                                </div>
+                                <div id="customEmployeeSelectContainer" class="col-md-3">
+                                    <label for="customEmployeeSelect" class="form-label">اختر الموظف</label>
+                                    <select id="customEmployeeSelect" class="form-select"></select>
+                                </div>
+                                <div id="customDepartmentSelectContainer" class="col-md-3" style="display:none;">
+                                    <label for="customDepartmentSelect" class="form-label">اختر القسم</label>
+                                    <select id="customDepartmentSelect" class="form-select"></select>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="row">
+                                        <div class="col-6"><label for="customStartDate" class="form-label">من</label><input type="date" id="customStartDate" class="form-control"></div>
+                                        <div class="col-6"><label for="customEndDate" class="form-label">إلى</label><input type="date" id="customEndDate" class="form-control"></div>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <button class="btn btn-primary w-100" onclick="generateCustomReport()"><i class="fas fa-cogs"></i> إنشاء</button>
+                                </div>
+                            </div>
+                            <div id="customReportContainer"></div>
+                        </div>
+
+                        <!-- Charts Tab -->
+                        <div class="tab-pane fade" id="charts-analysis" role="tabpanel" aria-labelledby="charts-tab">
+                             <h5>تحليل بياني للإجازات</h5>
+                             <div class="row mt-4">
+                                 <div class="col-lg-8">
+                                     <div class="card">
+                                         <div class="card-header">مقارنة الإجازات بين الأقسام (بالأيام)</div>
+                                         <div class="card-body">
+                                             <canvas id="departmentComparisonChart" height="200"></canvas>
+                                         </div>
+                                     </div>
+                                 </div>
+                                 <div class="col-lg-4">
+                                     <div class="card">
+                                         <div class="card-header">توزيع أنواع الإجازات</div>
+                                         <div class="card-body">
+                                             <canvas id="leaveTypeDistributionChart" height="200"></canvas>
+                                         </div>
+                                     </div>
+                                 </div>
+                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- قسم الإعدادات -->
+                <div id="settingsSection" class="section">
+                    <h3>إعدادات النظام</h3>
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">سياسات الإجازات</h5>
+                            <p class="card-text">قم بتعيين قواعد الإجازات الافتراضية للموظفين عند إضافتهم للنظام.</p>
+                            
+                            <hr>
+                            <h6>الموظف الدائم</h6>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="settingsPermanentAnnual" class="form-label">الرصيد السنوي الافتراضي</label>
+                                    <input type="number" class="form-control" id="settingsPermanentAnnual" min="0">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="settingsPermanentTimeHours" class="form-label">الحد الأقصى للساعات الزمنية (شهريًا)</label>
+                                    <input type="number" class="form-control" id="settingsPermanentTimeHours" min="0">
+                                </div>
+                            </div>
+
+                            <hr>
+                            <h6>الأجر اليومي</h6>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="settingsDailyMonthly" class="form-label">الرصيد الشهري الافتراضي</label>
+                                    <input type="number" class="form-control" id="settingsDailyMonthly" min="0">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="settingsDailyTimeHours" class="form-label">الحد الأقصى للساعات الزمنية (شهريًا)</label>
+                                    <input type="number" class="form-control" id="settingsDailyTimeHours" min="0">
+                                </div>
+                            </div>
+
+                            <hr>
+                            <h5 class="card-title mt-4">سياسة الإجازة الطارئة</h5>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="settingsEmergencyLimit" class="form-label">الحد الأقصى للإجازات الطارئة (ساعات في الشهر)</label>
+                                    <input type="number" class="form-control" id="settingsEmergencyLimit" min="0">
+                                </div>
+                            </div>
+                             <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="settingsEmergencyDeductionEnabled">
+                                <label class="form-check-label" for="settingsEmergencyDeductionEnabled">تفعيل خصم يوم من الرصيد الاعتيادي</label>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="settingsEmergencyDeductionCount" class="form-label">خصم يوم واحد لكل (كم) ساعة إجازة طارئة؟</label>
+                                    <input type="number" class="form-control" id="settingsEmergencyDeductionCount" min="1">
+                                </div>
+                            </div>
+                            
+                            <hr>
+                            <h5 class="card-title mt-4">سياسة خصم الإجازات الزمنية</h5>
+                             <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="settingsDeductionEnabled">
+                                <label class="form-check-label" for="settingsDeductionEnabled">تفعيل خصم يوم من الرصيد بعد تجاوز حد الساعات</label>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="settingsDeductionHours" class="form-label">خصم يوم واحد لكل (كم) ساعة؟</label>
+                                    <input type="number" class="form-control" id="settingsDeductionHours" min="1">
+                                </div>
+                            </div>
+
+                            <button class="btn btn-primary mt-3" onclick="saveSettings()"><i class="fas fa-save"></i> حفظ الإعدادات</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- زر عائم لفتح قسم إدارة الإجازات -->
+    <button class="floating-button" onclick="showSection('leaveSection')" data-bs-toggle="tooltip" data-bs-placement="left" title="إدارة الإجازات" aria-label="إدارة الإجازات">
+        <i class="fas fa-calendar-alt"></i>
+    </button>
+
+    <div id="print-container"></div>
+
+    <!-- فوتـر الصفحة -->
+    <footer>
+        <p>© 2024 جميع الحقوق محفوظة - مديرية بلدية الشطرة | مطور: حمزة صالح جمعه</p>
+    </footer>
+
+    <!-- حاوية رسائل الحالة والتنبيهات -->
+    <div id="statusMessage"></div>
+
+    <!-- ========== مودالات التطبيق ========== -->
+    
+    <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="confirmModalLabel">تأكيد الإجراء</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+          </div>
+          <div class="modal-body" id="confirmModalBody">
+            هل أنت متأكد من رغبتك في المتابعة؟
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+            <button type="button" class="btn btn-danger" id="confirmModalButton">تأكيد</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="editDepartmentModal" tabindex="-1" aria-labelledby="editDepartmentModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="editDepartmentModalLabel">تعديل القسم</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="editDepartmentId">
+            <div class="mb-3">
+                <label for="editDepartmentName" class="form-label">اسم القسم</label>
+                <input type="text" class="form-control" id="editDepartmentName" placeholder="اسم القسم الجديد" aria-label="اسم القسم الجديد">
+            </div>
+            <div class="mb-3">
+                <label for="editDepartmentLimit" class="form-label">الحد الأقصى للإجازات</label>
+                <input type="number" min="1" class="form-control" id="editDepartmentLimit" placeholder="الحد الأقصى للإجازات بنفس اليوم" aria-label="الحد الأقصى للإجازات بنفس اليوم">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+            <button type="button" class="btn btn-primary" onclick="saveEditedDepartment()">حفظ التعديل</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="modal fade" id="editEmployeeModal" tabindex="-1" aria-labelledby="editEmployeeModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="editEmployeeModalLabel">تعديل الموظف</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="editEmployeeId">
+            <div class="mb-3">
+                <input type="text" class="form-control" id="editEmployeeName" placeholder="اسم الموظف" aria-label="اسم الموظف">
+            </div>
+            <div class="mb-3">
+                <select class="form-select" id="editEmployeeType" onchange="toggleEditAnnualLeavesInput()" aria-label="اختيار نوع الموظف">
+                    <option value="">اختر نوع الموظف</option>
+                    <option value="permanent">دائم (36 يوم/سنة)</option>
+                    <option value="daily">أجر يومي (يومان/شهر)</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <select class="form-select" id="editDepartmentSelect" aria-label="اختيار القسم">
+                    <option value="">اختر القسم</option>
+                </select>
+            </div>
+            <div id="editAnnualLeavesContainer" class="mb-3" style="display: none;">
+                <input 
+                  class="form-control" 
+                  id="editAnnualLeaves" 
+                  placeholder="رصيد الإجازات" 
+                  type="number" 
+                  min="0"
+                  aria-label="رصيد الإجازات"
+                />
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+            <button type="button" class="btn btn-primary" onclick="saveEditedEmployee()">حفظ التعديل</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="modal fade" id="leaveTypeModal" tabindex="-1" aria-labelledby="leaveTypeModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="leaveTypeModalLabel">إدارة أنواع الإجازة</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+          </div>
+          <div class="modal-body">
+            <div class="input-group mb-4">
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  id="newLeaveTypeInput" 
+                  placeholder="نوع إجازة جديد"
+                  aria-label="نوع إجازة جديد"
+                />
+                <button class="btn btn-success" onclick="addLeaveType()" data-bs-toggle="tooltip" data-bs-placement="top" title="إضافة نوع إجازة">
+                    <i class="fas fa-plus"></i> إضافة
+                </button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-bordered table-sm table-striped table-hover" id="leaveTypeTable">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>نوع الإجازة</th>
+                            <th>إجراء</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaveTypeTableBody"></tbody>
+                </table>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="addPastTimeLeaveModal" tabindex="-1" aria-labelledby="addPastTimeLeaveModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addPastTimeLeaveModalLabel">إضافة إجازة زمنية سابقة</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="pastLeaveEmployeeSelect" class="form-label">الموظف</label>
+                        <select class="form-select" id="pastLeaveEmployeeSelect" aria-label="اختر الموظف"></select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="pastLeaveDate" class="form-label">تاريخ الإجازة</label>
+                        <input type="date" class="form-control" id="pastLeaveDate" aria-label="تاريخ الإجازة">
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label for="pastLeaveFromTime" class="form-label">من توقيت</label>
+                            <input type="time" class="form-control" id="pastLeaveFromTime" aria-label="من توقيت">
+                        </div>
+                        <div class="col-6">
+                            <label for="pastLeaveToTime" class="form-label">إلى توقيت</label>
+                            <input type="time" class="form-control" id="pastLeaveToTime" aria-label="إلى توقيت">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="pastLeaveNotes" class="form-label">ملاحظات</label>
+                        <textarea class="form-control" id="pastLeaveNotes" rows="2" placeholder="ملاحظات (اختياري)"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" class="btn btn-primary" onclick="addPastTimeLeave()">حفظ الإجازة</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="employeeProfileModal" tabindex="-1" aria-labelledby="employeeProfileModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="employeeProfileModalLabel">شاشة الموظف</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+          </div>
+          <div class="modal-body">
+            <div id="employeeProfileContent"></div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="modal fade" id="previousLeavesModal" tabindex="-1" aria-labelledby="previousLeavesModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="previousLeavesModalLabel">الإجازات السابقة للموظف</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+          </div>
+          <div class="modal-body">
+            <button class="btn btn-danger mb-3" onclick="deletePreviousLeaves(currentProfileEmployeeId)" data-bs-toggle="tooltip" data-bs-placement="top" title="حذف جميع الإجازات السابقة">
+                <i class="fas fa-trash-alt"></i> حذف جميع الإجازات السابقة
+            </button>
+            <div class="table-responsive" id="employeeLeaveTableModalParent">
+              <table class="table table-bordered table-sm table-striped table-hover" id="employeeLeaveTableModal">
+                  <thead class="table-dark">
+                      <tr>
+                          <th>تاريخ الإجازة</th>
+                          <th>تاريخ الانتهاء</th>
+                          <th>عدد الأيام/الساعات</th>
+                          <th>نوع الإجازة</th>
+                          <th>القسم</th>
+                          <th>الحالة</th>
+                          <th>إجراء</th>
+                      </tr>
+                  </thead>
+                  <tbody></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="exportOptionsModal" tabindex="-1" aria-labelledby="exportOptionsModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="exportOptionsModalLabel">خيارات التصدير</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+          </div>
+          <div class="modal-body">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" value="" id="includePastLeavesCheckbox">
+              <label class="form-check-label" for="includePastLeavesCheckbox">
+                تضمين الإجازات السابقة
+              </label>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+            <button type="button" class="btn btn-primary" onclick="confirmExportLeaves()">تصدير</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="printOptionsModal" tabindex="-1" aria-labelledby="printOptionsModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="printOptionsModalLabel">خيارات الطباعة</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+          </div>
+          <div class="modal-body">
+             <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="" id="printIncludePastLeaves" onchange="toggleAllMonthsOption()">
+                <label class="form-check-label" for="printIncludePastLeaves">
+                    تضمين الإجازات الزمنية السابقة (لنفس الشهر)
+                </label>
+            </div>
+            <div class="form-check ms-3 mt-2">
+                <input class="form-check-input" type="checkbox" value="" id="printIncludeAllMonths" disabled>
+                <label class="form-check-label" for="printIncludeAllMonths">
+                    تضمين الأشهر السابقة أيضًا
+                </label>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+            <button type="button" class="btn btn-primary" onclick="confirmPrintLeaves()">طباعة</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== تحميل مكتبات الجافاسكربت بالترتيب المناسب ========== -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/fullcalendar@5.11.3/main.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+    
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+              return new bootstrap.Tooltip(tooltipTriggerEl)
+            });
+
+            particlesJS("particles-js", { 
+                "particles": { 
+                    "number": { "value": 50 }, 
+                    "color": { "value": "#ffffff" }, 
+                    "shape": { "type": "circle" }, 
+                    "opacity": { "value": 0.5 }, 
+                    "size": { "value": 3, "random": true }, 
+                    "line_linked": { 
+                        "enable": true, 
+                        "distance": 150, 
+                        "color": "#ffffff", 
+                        "opacity": 0.4 
+                    }, 
+                    "move": { 
+                        "enable": true, 
+                        "speed": 6, 
+                        "direction": "none", 
+                        "out_mode": "out" 
+                    } 
+                }, 
+                "interactivity": { 
+                    "events": { 
+                        "onhover": { "enable": true, "mode": "repulse" }, 
+                        "onclick": { "enable": true, "mode": "push" } 
+                    } 
+                }, 
+                "retina_detect": true 
+            });
+        
+            document.getElementById('printOptionsModal').addEventListener('hidden.bs.modal', () => {
+                currentLeaveToPrintId = null; 
+            });
+        });
+    </script>
+
+    <!-- ========== الشيفرة الجافاسكربتية الرئيسية ========== -->
+    <script>
+    /* ========== نظام الأحداث (EventBus) ========== */
+    const EventBus = {
+        events: {},
+        dispatch(event, data) {
+            if (this.events[event]) this.events[event].forEach(callback => callback(data));
+        },
+        subscribe(event, callback) {
+            if (!this.events[event]) this.events[event] = [];
+            this.events[event].push(callback);
+        }
+    };
+
+    /* ========== المتغيرات العامة ========== */
+    let departments = [], employees = [], leaves = [], notifications = [], leaveTypes = [], tardinessRecords = [];
+    let db = null, currentProfileEmployeeId = null;
+    let currentLeaveToPrintId = null; 
+    
+    let settings = {
+        permanent: {
+            annualLeaves: 36,
+            maxTimeLeaveHours: 8 
+        },
+        daily: {
+            monthlyLeaves: 2,
+            maxTimeLeaveHours: 4
+        },
+        timeLeaveDeduction: {
+            enabled: true,
+            hoursThreshold: 6,
+        },
+        emergencyLeave: {
+            limitPerMonth: 8, // تغيير من أيام إلى ساعات
+            deduction: {
+                enabled: true,
+                count: 4, // تغيير من عدد إجازات إلى ساعات
+            }
+        }
+    };
+
+    let currentLeaveFilters = {
+        search: '',
+        type: '',
+        status: '',
+        start: '',
+        end: ''
+    };
+
+    /* ========== مودال التأكيد العام ========== */
+    let confirmCallback = null, confirmModalInstance = null;
+    document.addEventListener('DOMContentLoaded', () => {
+        confirmModalInstance = new bootstrap.Modal(document.getElementById('confirmModal'));
+        document.getElementById('confirmModalButton').addEventListener('click', () => {
+            if (typeof confirmCallback === 'function') confirmCallback();
+            confirmModalInstance.hide();
+            confirmCallback = null;
+        });
+    });
+
+    function showConfirmModal(message, callback) {
+        document.getElementById('confirmModalBody').textContent = message;
+        confirmCallback = callback;
+        if (confirmModalInstance) confirmModalInstance.show();
+    }
+    
+    function showAlert(message, type = "success") {
+        const alertContainer = document.getElementById("statusMessage");
+        if (!alertContainer) return;
+        alertContainer.innerHTML = '';
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+        alertDiv.role = 'alert';
+        alertDiv.innerHTML = `${message}<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>`;
+        alertContainer.appendChild(alertDiv);
+        setTimeout(() => { 
+            if (alertDiv.parentNode) {
+                alertDiv.classList.remove('show'); 
+                setTimeout(() => alertDiv.remove(), 150); 
+            }
+        }, 5000);
+    }
+
+    /* ========== IndexedDB ========== */
+    function initializeIndexedDB() {
+        const request = window.indexedDB.open("HRSystemDB", 11); // زيادة رقم الإصدار
+        request.onupgradeneeded = e => {
+            const upgradeDB = e.target.result;
+            if (!upgradeDB.objectStoreNames.contains('departments')) {
+                upgradeDB.createObjectStore('departments', { keyPath: 'id' });
+            }
+            if (!upgradeDB.objectStoreNames.contains('employees')) {
+                upgradeDB.createObjectStore('employees', { keyPath: 'id' });
+            }
+            if (!upgradeDB.objectStoreNames.contains('leaves')) {
+                upgradeDB.createObjectStore('leaves', { keyPath: 'id' });
+            }
+            if (!upgradeDB.objectStoreNames.contains('notifications')) {
+                upgradeDB.createObjectStore('notifications', { keyPath: 'id', autoIncrement: true });
+            }
+            if (!upgradeDB.objectStoreNames.contains('leaveTypes')) {
+                upgradeDB.createObjectStore('leaveTypes', { keyPath: 'name' });
+            }
+            if (!upgradeDB.objectStoreNames.contains('tardinessRecords')) {
+                upgradeDB.createObjectStore('tardinessRecords', { keyPath: 'id' });
+            }
+            if (!upgradeDB.objectStoreNames.contains('settings')) {
+                upgradeDB.createObjectStore('settings', { keyPath: 'id' });
+            }
+        };
+        request.onsuccess = e => { 
+            db = e.target.result; 
+            loadFromIndexedDB(); 
+        };
+        request.onerror = e => console.error("IndexedDB Error:", e);
+    }
+
+    function saveArrayToIndexedDB(storeName, array) {
+        if (!db) return;
+        const tx = db.transaction(storeName, "readwrite");
+        const store = tx.objectStore(storeName);
+        store.clear();
+        array.forEach(item => store.add(item));
+    }
+
+    function loadArrayFromIndexedDB(storeName) {
+        return new Promise((resolve, reject) => {
+            if (!db) {
+                return reject("Database not initialized.");
+            }
+            const transaction = db.transaction(storeName, "readonly");
+            const store = transaction.objectStore(storeName);
+            const request = store.getAll();
+            
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    async function loadFromIndexedDB() {
+        try {
+            showLoading();
+            const [
+                departmentsData,
+                employeesData,
+                leavesData,
+                notificationsData,
+                leaveTypesData,
+                tardinessData,
+                settingsData
+            ] = await Promise.all([
+                loadArrayFromIndexedDB('departments'),
+                loadArrayFromIndexedDB('employees'),
+                loadArrayFromIndexedDB('leaves'),
+                loadArrayFromIndexedDB('notifications'),
+                loadArrayFromIndexedDB('leaveTypes'),
+                loadArrayFromIndexedDB('tardinessRecords'),
+                loadArrayFromIndexedDB('settings')
+            ]);
+
+            departments = departmentsData || [];
+            employees = employeesData || [];
+            leaves = leavesData || [];
+            notifications = notificationsData || [];
+            
+            if (settingsData && settingsData.length > 0) {
+                Object.assign(settings, settingsData[0]);
+            } else {
+                saveArrayToIndexedDB('settings', [{ id: 1, ...settings }]);
+            }
+
+            if (leaveTypesData && leaveTypesData.length > 0) {
+                leaveTypes = leaveTypesData.map(lt => lt.name);
+            } else {
+                leaveTypes = ["إجازة اعتيادية", "إجازة مرضية", "إجازة طارئة", "إجازة زمنية", "إجازة أمومة", "إجازة أبوة"];
+                saveArrayToIndexedDB('leaveTypes', leaveTypes.map(name => ({name})));
+            }
+            
+            tardinessRecords = tardinessData || [];
+
+            // تنظيف البيانات غير الصالحة
+            cleanupInvalidDates();
+
+            EventBus.dispatch('departmentsChanged', departments);
+            EventBus.dispatch('employeesChanged', employees);
+            EventBus.dispatch('leavesChanged', leaves);
+            EventBus.dispatch('notificationsChanged', notifications);
+            EventBus.dispatch('leaveTypesChanged', leaveTypes);updateLeaveTypeDropdown(leaveTypes);
+            EventBus.dispatch('tardinessChanged', tardinessRecords);
+            
+            renewDailyLeaves();
+            checkLeaveEndings();
+
+        } catch (error) {
+            console.error("Failed to load data from IndexedDB:", error);
+            showAlert('حدث خطأ أثناء تحميل البيانات من قاعدة البيانات المحلية.', 'danger');
+        } finally {
+            hideLoading();
+            showSection('dashboardSection');
+        }
+    }
+
+    function saveAllToIndexedDB() {
+        if (!db) return;
+        saveArrayToIndexedDB('departments', departments);
+        saveArrayToIndexedDB('employees', employees);
+        saveArrayToIndexedDB('leaves', leaves);
+        saveArrayToIndexedDB('notifications', notifications);
+        saveArrayToIndexedDB('leaveTypes', leaveTypes.map(name => ({ name })));
+        saveArrayToIndexedDB('tardinessRecords', tardinessRecords);
+    }
+
+    function saveSettingsToIndexedDB() {
+        if (!db) return;
+        saveArrayToIndexedDB('settings', [{ id: 1, ...settings }]);
+    }
+
+    /* ========== تنظيف البيانات غير الصالحة ========== */
+    function cleanupInvalidDates() {
+        let cleanedCount = 0;
+        
+        leaves = leaves.filter(leave => {
+            const startValid = !isNaN(new Date(leave.startDate).getTime());
+            const endValid = !isNaN(new Date(leave.endDate).getTime());
+            
+            if (!startValid || !endValid) {
+                console.warn('Removing leave with invalid date:', leave);
+                cleanedCount++;
+                return false;
+            }
+            return true;
+        });
+        
+        if (cleanedCount > 0) {
+            showAlert(`تم تنظيف ${cleanedCount} سجل إجازة يحتوي على تواريخ غير صالحة.`, 'warning');
+            EventBus.dispatch('leavesChanged', leaves);
+            saveAllToIndexedDB();
+        }
+    }
+
+    /* ========== Event Subscriptions ========== */
+    function initializeEventSubscriptions() {
+        EventBus.subscribe('departmentsChanged', data => { 
+            updateDepartmentDropdowns(data); 
+            renderDepartments(); 
+            renderStatsDashboard(); 
+        });
+        EventBus.subscribe('employeesChanged', data => { 
+            updateEmployeeRelatedUI(data); 
+            renderEmployees(); 
+            renderStatsDashboard(); 
+        });
+        EventBus.subscribe('leavesChanged', data => { 
+            renderLeaves(); 
+            renderLeaveChart(); 
+            renderCalendar(); 
+            renderStatsDashboard(); 
+        });
+        EventBus.subscribe('notificationsChanged', data => { 
+            renderNotifications(data); 
+            updateNotificationBadge(); 
+        });
+        EventBus.subscribe('leaveTypesChanged', data => { 
+            updateLeaveTypeDropdown(data); 
+            updateFilterTypeDropdown(data); 
+            renderLeaveTypes(); 
+        });
+        EventBus.subscribe('tardinessChanged', data => { 
+            renderTardinessRecords(data); 
+        });
+    }
+
+    /* ========== UI Toggles & Section Management ========== */
+    function toggleSidebar() { 
+        document.getElementById('sidebar-wrapper').classList.toggle('active'); 
+    }
+    
+    function showSection(sectionId) {
+        document.querySelectorAll('.section').forEach(sec => sec.style.display = 'none');
+        const section = document.getElementById(sectionId);
+        if (section) section.style.display = 'block';
+if (sectionId === 'leaveSection') {
+    prefillLeaveForm(); 
+    renderLeaves();
+    renderLeaveChart();
+    renderCalendar();
+    updateLeaveTypeDropdown(leaveTypes);
+}
+        else if (sectionId === 'dashboardSection') { 
+            renderStatsDashboard();
+            fillEmployeeSelectForDashboard();
+            renderPersonalDashboard(); 
+        }
+        else if (sectionId === 'tardinessSection') {
+            document.getElementById('tardinessDate').value = new Date().toISOString().split('T')[0];
+        }
+        else if (sectionId === 'reportsSection') {
+            document.getElementById('reportDate').value = new Date().toISOString().split('T')[0];
+            populateAnalysisDropdowns();
+            renderDepartmentLeaveComparisonChart();
+            renderLeaveTypeDistributionChart();
+        }
+        else if (sectionId === 'settingsSection') {
+            renderSettings();
+        }
+        
+        if (window.innerWidth < 768) {
+            const sidebar = document.getElementById('sidebar-wrapper');
+            if (sidebar.classList.contains('active')) {
+                sidebar.classList.remove('active');
+            }
+        }
+    }
+
+    /* ========== Dashboard ========== */
+    function renderStatsDashboard() {
+        const todayStr = new Date().toISOString().split('T')[0];
+
+        const activeLeaves = leaves.filter(l => 
+            l.status === 'approved' && 
+            todayStr >= l.startDate && 
+            todayStr <= l.endDate
+        ).length;
+
+        document.getElementById('statsDepartments').textContent = departments.length;
+        document.getElementById('statsEmployees').textContent = employees.length;
+        document.getElementById('statsApprovedLeaves').textContent = activeLeaves;
+        document.getElementById('statsPendingLeaves').textContent = leaves.filter(l => l.status === 'pending').length;
+    }
+    
+    function fillEmployeeSelectForDashboard() {
+        const select = document.getElementById('dashboardEmployeeSelect');
+        select.innerHTML = '<option value="">اختر الموظف</option>';
+        employees.forEach(emp => select.innerHTML += `<option value="${emp.id}">${emp.name}</option>`);
+    }
+
+    function renderPersonalDashboard() {
+        const employeeId = document.getElementById('dashboardEmployeeSelect').value;
+        const content = document.getElementById('dashboardContent');
+        content.innerHTML = '';
+        if (employeeId) {
+            const employee = employees.find(emp => emp.id == employeeId);
+            if (employee) {
+                const departmentName = getDepartmentNameById(employee.departmentId);
+                content.innerHTML = `<div class="card col-12"><div class="card-body">
+                    <h5 class="card-title">${employee.name}</h5>
+                    <p class="card-text">القسم: ${departmentName}</p>
+                    <p class="card-text">نوع الموظف: ${employee.type === 'permanent' ? 'دائم' : 'أجر يومي'}</p>
+                    <p class="card-text">رصيد الإجازات: ${employee.annualLeaves}</p>
+                    <button class="btn btn-info mt-3" onclick="openEmployeeProfileView(${employee.id})"><i class="fas fa-user"></i> عرض شاشة الموظف</button>
+                </div></div>`;
+            }
+        }
+    }
+    
+    function searchDashboard() {
+        const query = document.getElementById('dashboardSearch').value.toLowerCase();
+        Array.from(document.getElementById('dashboardEmployeeSelect').options).forEach(opt => {
+            opt.style.display = opt.textContent.toLowerCase().includes(query) ? '' : 'none';
+        });
+    }
+
+    /* ========== Employee Profile Modal ========== */
+    function openEmployeeProfileView(employeeId) {
+        currentProfileEmployeeId = employeeId;
+        const employee = employees.find(emp => emp.id === employeeId);
+        if (!employee) { 
+            showAlert('الموظف غير موجود.', 'danger'); 
+            return; 
+        }
+        const departmentName = getDepartmentNameById(employee.departmentId);
+        const contentDiv = document.getElementById('employeeProfileContent');
+        contentDiv.innerHTML = `<h5>المعلومات الشخصية</h5><ul class="list-group mb-4">
+            <li class="list-group-item"><strong>اسم الموظف:</strong> ${employee.name}</li>
+            <li class="list-group-item"><strong>القسم:</strong> ${departmentName}</li>
+            <li class="list-group-item"><strong>نوع الموظف:</strong> ${employee.type === 'permanent' ? 'دائم' : 'أجر يومي'}</li>
+            <li class="list-group-item"><strong>رصيد الإجازات:</strong> ${employee.annualLeaves}</li>
+        </ul><hr/><h5>سجل الإجازات</h5>`;
+        const employeeLeaves = leaves.filter(l => l.employeeId == employeeId && isLeavePast(l));
+        let leavesHtml = `<div class="table-responsive"><table class="table table-sm"><thead><tr><th>البداية</th><th>النهاية</th><th>المدة</th><th>النوع</th><th>الحالة</th></tr></thead><tbody>`;
+        if (employeeLeaves.length === 0) leavesHtml += `<tr><td colspan="5">لا توجد إجازات سابقة.</td></tr>`;
+        else employeeLeaves.forEach(l => leavesHtml += `<tr><td>${l.startDate}</td><td>${l.endDate||'-'}</td><td>${l.leaveType==='إجازة زمنية'||l.leaveType==='إجازة طارئة'?l.leaveHours+' س':l.leaveDays+' ي'}</td><td>${l.leaveType}</td><td>${translateStatus(l.status)}</td></tr>`);
+        leavesHtml += `</tbody></table></div>`;
+        contentDiv.innerHTML += leavesHtml;
+        new bootstrap.Modal(document.getElementById('employeeProfileModal')).show();
+    }
+
+    /* ========== Departments ========== */
+    function renderDepartments() {
+        const tableBody = document.getElementById('departmentTableBody');
+        tableBody.innerHTML = '';
+        departments.forEach(dept => {
+            tableBody.innerHTML += `<tr>
+                <td>${dept.name}</td>
+                <td>${dept.leaveLimit || 'غير محدد'}</td>
+                <td>
+                    <button class="btn btn-danger btn-sm" onclick="deleteDepartment(${dept.id})" title="حذف"><i class="fas fa-trash"></i></button>
+                    <button class="btn btn-primary btn-sm ms-2" onclick="editDepartment(${dept.id})" title="تعديل"><i class="fas fa-edit"></i></button>
+                </td>
+            </tr>`;
+        });
+    }
+    
+    function addDepartment() {
+        const nameInput = document.getElementById('newDepartmentName');
+        const limitInput = document.getElementById('newDepartmentLimit');
+        const deptName = nameInput.value.trim();
+        const leaveLimit = parseInt(limitInput.value);
+
+        if (deptName === '') { 
+            showAlert('يرجى إدخال اسم القسم.', 'danger'); 
+            return; 
+        }
+        if (departments.some(d => d.name === deptName)) { 
+            toastr.warning('القسم موجود بالفعل.'); 
+            return; 
+        }
+        
+        departments.push({ 
+            id: Date.now(), 
+            name: deptName, 
+            leaveLimit: isNaN(leaveLimit) ? null : leaveLimit 
+        });
+        EventBus.dispatch('departmentsChanged', departments);
+        saveAllToIndexedDB();
+        nameInput.value = '';
+        limitInput.value = '';
+        showAlert('تم إضافة القسم بنجاح.', 'success');
+    }
+    
+    function deleteDepartment(deptId) {
+        const dept = departments.find(d => d.id === deptId);
+        if (!dept) return;
+
+        showConfirmModal(`هل أنت متأكد من حذف قسم "${dept.name}"؟ سيتم حذف موظفيه وكل سجلاتهم.`, () => {
+            const employeesInDept = employees.filter(e => e.departmentId === deptId).map(e => e.id);
+            
+            departments = departments.filter(d => d.id !== deptId);
+            employees = employees.filter(e => e.departmentId !== deptId);
+            leaves = leaves.filter(l => !employeesInDept.includes(l.employeeId));
+            tardinessRecords = tardinessRecords.filter(t => !employeesInDept.includes(t.employeeId));
+
+            EventBus.dispatch('departmentsChanged', departments);
+            EventBus.dispatch('employeesChanged', employees);
+            EventBus.dispatch('leavesChanged', leaves);
+            EventBus.dispatch('tardinessChanged', tardinessRecords);
+            saveAllToIndexedDB();
+            showAlert('تم حذف القسم وكل بياناته بنجاح.', 'success');
+        });
+    }
+    
+    function deleteAllDepartments() {
+        showConfirmModal('هل أنت متأكد من حذف جميع الأقسام وكل البيانات المرتبطة بها؟ هذا الإجراء لا يمكن التراجع عنه.', () => {
+            departments = []; 
+            employees = []; 
+            leaves = [];
+            tardinessRecords = [];
+            EventBus.dispatch('departmentsChanged', departments);
+            EventBus.dispatch('employeesChanged', employees);
+            EventBus.dispatch('leavesChanged', leaves);
+            EventBus.dispatch('tardinessChanged', tardinessRecords);
+            saveAllToIndexedDB();
+            showAlert('تم حذف جميع البيانات بنجاح.', 'success');
+        });
+    }
+    
+    function editDepartment(deptId) {
+        const dept = departments.find(d => d.id === deptId);
+        if(!dept) return;
+        
+        document.getElementById('editDepartmentId').value = deptId;
+        document.getElementById('editDepartmentName').value = dept.name;
+        document.getElementById('editDepartmentLimit').value = dept.leaveLimit || '';
+        new bootstrap.Modal(document.getElementById('editDepartmentModal')).show();
+    }
+    
+    function saveEditedDepartment() {
+        const deptId = parseInt(document.getElementById('editDepartmentId').value);
+        const newDeptName = document.getElementById('editDepartmentName').value.trim();
+        const newLeaveLimit = parseInt(document.getElementById('editDepartmentLimit').value);
+        
+        if (newDeptName === '') { 
+            showAlert('يرجى إدخال اسم القسم.', 'danger'); 
+            return; 
+        }
+        
+        const index = departments.findIndex(d => d.id === deptId);
+        if (index > -1) {
+            departments[index].name = newDeptName;
+            departments[index].leaveLimit = isNaN(newLeaveLimit) ? null : newLeaveLimit;
+        }
+
+        EventBus.dispatch('departmentsChanged', departments);
+        EventBus.dispatch('employeesChanged', employees); 
+        saveAllToIndexedDB();
+        showAlert('تم تعديل القسم بنجاح.', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('editDepartmentModal')).hide();
+    }
+
+    /* ========== Employees ========== */
+    function renderEmployees() {
+        const tableBody = document.getElementById('employeeTableBody');
+        tableBody.innerHTML = '';
+        employees.forEach(emp => {
+            const departmentName = getDepartmentNameById(emp.departmentId);
+            tableBody.innerHTML += `<tr>
+                <td>${emp.name}</td>
+                <td>${emp.type==='permanent'?'دائم':'أجر يومي'}</td>
+                <td>${departmentName}</td>
+                <td>${emp.annualLeaves}</td>
+                <td>
+                    <button class="btn btn-danger btn-sm" onclick="deleteEmployee(${emp.id})" title="حذف"><i class="fas fa-trash"></i></button>
+                    <button class="btn btn-primary btn-sm ms-2" onclick="editEmployee(${emp.id})" title="تعديل"><i class="fas fa-edit"></i></button>
+                </td>
+            </tr>`;
+        });
+    }
+    
+    function addEmployee() {
+        const name = document.getElementById('newEmployee').value.trim();
+        const type = document.getElementById('employeeTypeSelect').value;
+        const departmentId = parseInt(document.getElementById('departmentSelect').value);
+        const annualLeavesInput = document.getElementById('annualLeaves').value;
+        
+        if (!name || !type || !departmentId) { 
+            showAlert('يرجى ملء جميع الحقول المطلوبة.', 'danger'); 
+            return; 
+        }
+
+        let annualLeaves;
+        if (annualLeavesInput !== '') {
+            annualLeaves = parseInt(annualLeavesInput);
+        } else {
+            annualLeaves = type === 'permanent' ? settings.permanent.annualLeaves : settings.daily.monthlyLeaves;
+        }
+        
+        const newEmployee = { 
+            id: Date.now(), 
+            name, 
+            type, 
+            departmentId, 
+            annualLeaves, 
+            lastRenewalDate: type === 'daily' ? `${new Date().getFullYear()}-${new Date().getMonth()+1}` : null
+        };
+        employees.push(newEmployee);
+        EventBus.dispatch('employeesChanged', employees);
+        saveAllToIndexedDB();
+        document.getElementById('newEmployee').value = '';
+        document.getElementById('employeeTypeSelect').value = '';
+        document.getElementById('departmentSelect').value = '';
+        document.getElementById('annualLeaves').value = '';
+        toggleAnnualLeavesInput();
+        showAlert('تم إضافة الموظف بنجاح.', 'success');
+    }
+    
+    function deleteEmployee(id) {
+        showConfirmModal(`هل أنت متأكد من حذف الموظف "${employees.find(e => e.id === id)?.name}" وكل سجلاته؟ هذا الإجراء لا يمكن التراجع عنه.`, () => {
+            employees = employees.filter(e => e.id !== id);
+            leaves = leaves.filter(l => l.employeeId !== id);
+            tardinessRecords = tardinessRecords.filter(t => t.employeeId !== id);
+
+            EventBus.dispatch('employeesChanged', employees);
+            EventBus.dispatch('leavesChanged', leaves);
+            EventBus.dispatch('tardinessChanged', tardinessRecords);
+            saveAllToIndexedDB();
+            showAlert('تم حذف الموظف.', 'success');
+        });
+    }
+    
+    function deleteAllEmployees() {
+        showConfirmModal('هل أنت متأكد من حذف جميع الموظفين وكل سجلاتهم؟ هذا الإجراء لا يمكن التراجع عنه.', () => {
+            employees = []; 
+            leaves = [];
+            tardinessRecords = [];
+            EventBus.dispatch('employeesChanged', employees);
+            EventBus.dispatch('leavesChanged', leaves);
+            EventBus.dispatch('tardinessChanged', tardinessRecords);
+            saveAllToIndexedDB();
+            showAlert('تم حذف جميع الموظفين.', 'success');
+        });
+    }
+    
+    function editEmployee(empId) {
+        const emp = employees.find(e => e.id === empId);
+        if (!emp) return;
+        document.getElementById('editEmployeeId').value = emp.id;
+        document.getElementById('editEmployeeName').value = emp.name;
+        document.getElementById('editEmployeeType').value = emp.type;
+        document.getElementById('editDepartmentSelect').value = emp.departmentId;
+        document.getElementById('editAnnualLeaves').value = emp.annualLeaves;
+        toggleEditAnnualLeavesInput();
+        new bootstrap.Modal(document.getElementById('editEmployeeModal')).show();
+    }
+    
+    function saveEditedEmployee() {
+        const id = parseInt(document.getElementById('editEmployeeId').value);
+        const name = document.getElementById('editEmployeeName').value.trim();
+        const type = document.getElementById('editEmployeeType').value;
+        const departmentId = parseInt(document.getElementById('editDepartmentSelect').value);
+        const annualLeaves = parseInt(document.getElementById('editAnnualLeaves').value);
+        if (!name || !type || !departmentId) { 
+            showAlert('يرجى ملء جميع الحقول.', 'danger'); 
+            return; 
+        }
+        const index = employees.findIndex(e => e.id === id);
+        if (index === -1) return;
+        
+        employees[index] = { 
+            ...employees[index], 
+            name, 
+            type, 
+            departmentId, 
+            annualLeaves: isNaN(annualLeaves) ? employees[index].annualLeaves : annualLeaves 
+        };
+        
+        leaves.forEach(l => { if (l.employeeId === id) l.employeeName = name; });
+        tardinessRecords.forEach(t => { if (t.employeeId === id) t.employeeName = name; });
+
+        EventBus.dispatch('employeesChanged', employees);
+        EventBus.dispatch('leavesChanged', leaves);
+        EventBus.dispatch('tardinessChanged', tardinessRecords);
+        saveAllToIndexedDB();
+        showAlert('تم تعديل الموظف بنجاح.', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('editEmployeeModal')).hide();
+    }
+    
+    function toggleAnnualLeavesInput() { 
+        document.getElementById('annualLeavesContainer').style.display = 
+            document.getElementById('employeeTypeSelect').value !== '' ? 'block' : 'none'; 
+    }
+    
+    function toggleEditAnnualLeavesInput() { 
+        document.getElementById('editAnnualLeavesContainer').style.display = 
+            document.getElementById('editEmployeeType').value !== '' ? 'block' : 'none'; 
+    }
+    
+    /* ========== Dropdown Updates ========== */
+    function updateDepartmentDropdowns(data) {
+        ['departmentSelect', 'editDepartmentSelect'].forEach(id => {
+            const select = document.getElementById(id);
+            if(select) {
+                const currentValue = select.value;
+                select.innerHTML = `<option value="">-- اختر قسم --</option>`;
+                data.forEach(dept => select.innerHTML += `<option value="${dept.id}">${dept.name}</option>`);
+                if (data.some(d => d.id == currentValue)) {
+                    select.value = currentValue;
+                }
+            }
+        });
+    }
+    
+    function updateLeaveTypeDropdown(data) {
+        const select = document.getElementById('leaveType');
+        select.innerHTML = '<option value="">اختر نوع الإجازة</option>';
+        data.forEach(type => select.innerHTML += `<option value="${type}">${type}</option>`);
+    }
+    
+    function updateFilterTypeDropdown(data) {
+        const select = document.getElementById('filterType');
+        select.innerHTML = '<option value="">كل الأنواع</option>';
+        data.forEach(type => select.innerHTML += `<option value="${type}">${type}</option>`);
+    }
+    
+    function updateEmployeeRelatedUI() { 
+        fillEmployeeSelectForDashboard(); 
+    }
+
+    /* ========== Leave Conflict Management ========== */
+    function checkLeaveConflict(leaveToProcess) {
+        const department = departments.find(d => d.id === leaveToProcess.departmentId);
+        if (!department || !department.leaveLimit) {
+            return false; 
+        }
+
+        const conflictingLeavesCount = leaves.filter(l => 
+            l.id !== leaveToProcess.id && 
+            l.departmentId === leaveToProcess.departmentId &&
+            l.status === 'approved' &&
+            l.startDate === leaveToProcess.startDate
+        ).length;
+
+        return conflictingLeavesCount >= department.leaveLimit;
+    }
+
+    /* ========== Leaves ========== */
+    function setupEmployeeSearch(inputId, resultsId, onSelectCallback) {
+        const searchInput = document.getElementById(inputId);
+        const resultsContainer = document.getElementById(resultsId);
+
+        const performSearch = () => {
+            const query = searchInput.value.toLowerCase();
+            resultsContainer.innerHTML = '';
+            
+            if (!query) {
+                resultsContainer.style.display = 'none';
+                return;
+            }
+
+            const matchedEmployees = employees.filter(emp => emp.name.toLowerCase().includes(query));
+
+            if (matchedEmployees.length === 0) {
+                resultsContainer.innerHTML = '<a href="#" class="list-group-item list-group-item-action disabled">لا توجد نتائج</a>';
+            } else {
+                matchedEmployees.slice(0, 5).forEach(emp => {
+                    const item = document.createElement('a');
+                    item.href = '#';
+                    item.className = 'list-group-item list-group-item-action';
+                    const departmentName = getDepartmentNameById(emp.departmentId);
+                    item.textContent = `${emp.name} (${departmentName})`;
+                    item.onclick = (e) => {
+                        e.preventDefault();
+                        onSelectCallback(emp.id);
+                        resultsContainer.innerHTML = '';
+                        resultsContainer.style.display = 'none';
+                    };
+                    resultsContainer.appendChild(item);
+                });
+            }
+            resultsContainer.style.display = 'block';
+        };
+
+        searchInput.addEventListener('input', performSearch);
+        searchInput.addEventListener('focus', performSearch);
+    }
+    
+    function selectEmployeeForLeave(employeeId) {
+        const employee = employees.find(emp => emp.id === employeeId);
+        if (!employee) return;
+        
+        const departmentName = getDepartmentNameById(employee.departmentId);
+        document.getElementById('leaveEmployeeSearch').value = employee.name;
+        document.getElementById('selectedEmployeeId').value = employee.id;
+        document.getElementById('selectedEmployeeDepartment').textContent = `القسم: ${departmentName}`;
+        renderLeaves();
+    }
+
+    function prefillLeaveForm() {
+        const now = new Date();
+        const today = now.toISOString().split('T')[0];
+        document.getElementById('leaveStartDate').value = today;
+
+        const currentTime = now.toTimeString().split(' ')[0].substring(0, 5);
+        document.getElementById('leaveFromTime').value = currentTime;
+        document.getElementById('leaveToTime').value = "14:00";
+    }
+
+    function openLeaveTypeModal() { 
+        new bootstrap.Modal(document.getElementById('leaveTypeModal')).show(); 
+    }
+    
+    function renderLeaveTypes() {
+        const tableBody = document.getElementById('leaveTypeTableBody');
+        tableBody.innerHTML = '';
+        leaveTypes.forEach(type => tableBody.innerHTML += `
+            <tr>
+                <td>${type}</td>
+                <td>
+                    <button class="btn btn-danger btn-sm" onclick="deleteLeaveType('${type}')">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `);
+    }
+    
+    function addLeaveType() {
+        const input = document.getElementById('newLeaveTypeInput');
+        const typeName = input.value.trim();
+        if (typeName === '') { 
+            showAlert('يرجى إدخال اسم نوع الإجازة.', 'danger'); 
+            return; 
+        }
+        if (leaveTypes.includes(typeName)) { 
+            toastr.warning('النوع موجود بالفعل.'); 
+            return; 
+        }
+        leaveTypes.push(typeName);
+        EventBus.dispatch('leaveTypesChanged', leaveTypes);updateLeaveTypeDropdown(leaveTypes);
+        saveAllToIndexedDB();
+        input.value = '';
+        showAlert('تم إضافة النوع.', 'success');
+    }
+    
+    function deleteLeaveType(typeName) {
+        showConfirmModal(`هل أنت متأكد من حذف نوع الإجازة "${typeName}"؟`, () => {
+            leaveTypes = leaveTypes.filter(t => t !== typeName);
+            EventBus.dispatch('leaveTypesChanged', leaveTypes);updateLeaveTypeDropdown(leaveTypes);
+            saveAllToIndexedDB();
+            showAlert('تم حذف النوع.', 'success');
+        });
+    }
+    
+    function toggleLeaveFields() {
+        const leaveType = document.getElementById('leaveType').value;
+        const isTimeLeave = leaveType === 'إجازة زمنية';
+        const isEmergencyLeave = leaveType === 'إجازة طارئة';
+        
+        document.getElementById('leaveDaysContainer').style.display = (isTimeLeave || isEmergencyLeave) ? 'none' : 'block';
+        document.getElementById('leaveTimeFields').style.display = (isTimeLeave || isEmergencyLeave) ? 'flex' : 'none';
+    }
+
+    function addLeave() {
+        const employeeId = parseInt(document.getElementById('selectedEmployeeId').value);
+        const startDate = document.getElementById('leaveStartDate').value;
+        const leaveType = document.getElementById('leaveType').value;
+        
+        // التحقق من صحة التاريخ
+        const startDateObj = new Date(startDate);
+        if (isNaN(startDateObj.getTime())) {
+            showAlert('تاريخ البدء غير صالح.', 'danger');
+            return;
+        }
+        
+        renewDailyLeaves();
+
+        if (!employeeId || !startDate || !leaveType) { 
+            showAlert('يرجى اختيار موظف وملء الحقول المطلوبة.', 'danger'); 
+            return; 
+        }
+        
+        const employee = employees.find(emp => emp.id == employeeId);
+        if (!employee) return;
+
+        let leaveData = { 
+            id: Date.now(), 
+            employeeId: employeeId, 
+            employeeName: employee.name, 
+            departmentId: employee.departmentId, 
+            startDate, 
+            leaveType, 
+            status: 'pending', 
+            notes: document.getElementById('leaveNotes').value.trim() 
+        };
+        
+        if (leaveType === 'إجازة زمنية' || leaveType === 'إجازة طارئة') {
+            const from = document.getElementById('leaveFromTime').value, 
+                  to = document.getElementById('leaveToTime').value;
+            if (!from || !to || to <= from) { 
+                showAlert('يرجى إدخال توقيت صحيح.', 'danger'); 
+                return; 
+            }
+            leaveData.leaveHours = Math.round((new Date(`${startDate}T${to}`) - new Date(`${startDate}T${from}`)) / 36e5);
+            leaveData.leaveDays = 0; 
+            leaveData.endDate = startDate;
+
+            // التحقق من الحد الأقصى للإجازات الطارئة
+            if (leaveType === 'إجازة طارئة') {
+                const leaveDate = new Date(startDate);
+                const month = leaveDate.getMonth();
+                const year = leaveDate.getFullYear();
+
+                const emergencyLeavesThisMonth = leaves.filter(l => 
+                    l.employeeId === employeeId &&
+                    l.leaveType === 'إجازة طارئة' &&
+                    new Date(l.startDate).getMonth() === month &&
+                    new Date(l.startDate).getFullYear() === year
+                );
+
+                const totalEmergencyHours = emergencyLeavesThisMonth.reduce((sum, l) => sum + l.leaveHours, 0);
+                
+                if (totalEmergencyHours + leaveData.leaveHours > settings.emergencyLeave.limitPerMonth) {
+                    showAlert(`لقد تجاوز الموظف الحد الأقصى للإجازات الطارئة لهذا الشهر (${settings.emergencyLeave.limitPerMonth} ساعة).`, 'danger');
+                    return;
+                }
+            }
+        } else {
+            const days = parseInt(document.getElementById('leaveDays').value);
+            if (isNaN(days) || days < 1) { 
+                showAlert('أيام غير صحيحة.', 'danger'); 
+                return; 
+            }
+            if (employee.annualLeaves < days) { 
+                showAlert('رصيد الإجازات غير كافٍ.', 'danger'); 
+                return; 
+            }
+            const end = new Date(startDate); 
+            end.setDate(end.getDate() + days - 1);
+            
+            // التحقق من صحة تاريخ الانتهاء
+            if (isNaN(end.getTime())) {
+                showAlert('تاريخ الانتهاء غير صالح.', 'danger');
+                return;
+            }
+            
+            leaveData.leaveDays = days; 
+            leaveData.leaveHours = 0; 
+            leaveData.endDate = end.toISOString().split('T')[0];
+        }
+
+        const proceed = () => {
+            leaves.push(leaveData);
+            EventBus.dispatch('leavesChanged', leaves);
+            saveAllToIndexedDB();
+            showAlert('تم إضافة الإجازة بنجاح.', 'success');
+            clearLeaveForm();
+        };
+
+        if (checkLeaveConflict(leaveData)) {
+            showConfirmModal('تنبيه: إضافة هذه الإجازة ستتجاوز الحد المسموح به للقسم. هل تريد المتابعة؟', proceed);
+        } else {
+            proceed();
+        }
+    }
+    
+    function openAddPastTimeLeaveModal() {
+        const empSelect = document.getElementById('pastLeaveEmployeeSelect');
+        empSelect.innerHTML = '<option value="">اختر الموظف...</option>';
+        employees.forEach(emp => {
+            const deptName = getDepartmentNameById(emp.departmentId);
+            empSelect.innerHTML += `<option value="${emp.id}">${emp.name} (${deptName})</option>`;
+        });
+        new bootstrap.Modal(document.getElementById('addPastTimeLeaveModal')).show();
+    }
+    
+    function addPastTimeLeave() {
+        const employeeId = parseInt(document.getElementById('pastLeaveEmployeeSelect').value);
+        const startDate = document.getElementById('pastLeaveDate').value;
+        const fromTime = document.getElementById('pastLeaveFromTime').value;
+        const toTime = document.getElementById('pastLeaveToTime').value;
+
+        if (!employeeId || !startDate || !fromTime || !toTime) {
+            showAlert('يرجى ملء جميع الحقول في النافذة.', 'danger'); 
+            return;
+        }
+        if (toTime <= fromTime) {
+            showAlert('توقيت الانتهاء يجب أن يكون بعد توقيت البدء.', 'danger'); 
+            return;
+        }
+
+        const employee = employees.find(emp => emp.id == employeeId);
+        if (!employee) return;
+        
+        const leaveHours = Math.round((new Date(`${startDate}T${toTime}`) - new Date(`${startDate}T${fromTime}`)) / 36e5);
+
+        const newLeave = {
+            id: Date.now(),
+            employeeId: employeeId,
+            employeeName: employee.name,
+            departmentId: employee.departmentId,
+            startDate,
+            endDate: startDate,
+            leaveDays: 0,
+            leaveHours,
+            leaveType: 'إجازة زمنية',
+            status: 'approved',
+            notes: document.getElementById('pastLeaveNotes').value.trim()
+        };
+
+        leaves.push(newLeave);
+        // Manually trigger deduction check for past leaves
+        applyTimeLeaveDeduction(employeeId);
+        
+        EventBus.dispatch('leavesChanged', leaves);
+        saveAllToIndexedDB();
+        showAlert('تمت إضافة الإجازة السابقة بنجاح.', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('addPastTimeLeaveModal')).hide();
+    }
+
+    function clearLeaveForm() {
+        document.getElementById('leaveEmployeeSearch').value = '';
+        document.getElementById('selectedEmployeeId').value = '';
+        document.getElementById('selectedEmployeeDepartment').textContent = '';
+        document.getElementById('leaveDays').value = '';
+        document.getElementById('leaveType').value = '';
+        document.getElementById('leaveNotes').value = '';
+        prefillLeaveForm();
+        toggleLeaveFields();
+    }
+    
+    function isLeavePast(leave) {
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        const leaveEndDate = new Date(leave.endDate);
+        leaveEndDate.setHours(0,0,0,0);
+        return leaveEndDate < today;
+    }
+    
+    function renderLeaves() {
+        const employeeId = document.getElementById('selectedEmployeeId').value;
+        let displayLeaves = employeeId ? leaves.filter(l => l.employeeId == employeeId) : [];
+        
+        if (currentLeaveFilters.search) {
+            const query = currentLeaveFilters.search.toLowerCase();
+            displayLeaves = displayLeaves.filter(l => 
+                l.employeeName.toLowerCase().includes(query) ||
+                getDepartmentNameById(l.departmentId).toLowerCase().includes(query) ||
+                l.leaveType.toLowerCase().includes(query)
+            );
+        }
+        if (currentLeaveFilters.type) displayLeaves = displayLeaves.filter(l => l.leaveType === currentLeaveFilters.type);
+        if (currentLeaveFilters.status) displayLeaves = displayLeaves.filter(l => l.status === currentLeaveFilters.status);
+        if (currentLeaveFilters.start) displayLeaves = displayLeaves.filter(l => l.startDate >= currentLeaveFilters.start);
+        if (currentLeaveFilters.end) displayLeaves = displayLeaves.filter(l => l.endDate <= currentLeaveFilters.end);
+
+        const tableBody = document.getElementById('leaveTableBody');
+        tableBody.innerHTML = '';
+        
+        if (displayLeaves.length === 0) {
+            tableBody.innerHTML = `<tr><td colspan="9" class="text-center">لا توجد إجازات لعرضها تطابق الفلتر</td></tr>`;
+            return;
+        }
+        
+        displayLeaves.forEach(l => {
+            const endDateDisplay = (l.leaveType === 'إجازة زمنية' || l.leaveType === 'إجازة طارئة') ? l.startDate : l.endDate;
+            const departmentName = getDepartmentNameById(l.departmentId);
+            tableBody.innerHTML += `<tr>
+                <td><input type="checkbox" class="export-checkbox" value="${l.id}"/></td>
+                <td>${l.employeeName}</td>
+                <td>${l.startDate}</td>
+                <td>${endDateDisplay}</td>
+                <td>${(l.leaveType==='إجازة زمنية'||l.leaveType==='إجازة طارئة')?l.leaveHours+' س':l.leaveDays+' ي'}</td>
+                <td>${l.leaveType}</td>
+                <td>${departmentName}</td>
+                <td><span class="${getStatusClass(l.status)}">${translateStatus(l.status)}</span></td>
+                <td>
+                    ${l.status==='pending'?`
+                    <button class="btn btn-success btn-sm" onclick="approveLeave(${l.id})" title="موافقة"><i class="fas fa-check"></i></button> 
+                    <button class="btn btn-danger btn-sm" onclick="rejectLeave(${l.id})" title="رفض"><i class="fas fa-times"></i></button>
+                    `:''}
+                    <button class="btn btn-info btn-sm" onclick="openEmployeePreviousLeaves(${l.employeeId})" title="عرض السابق"><i class="fas fa-eye"></i></button>
+                    <button class="btn btn-warning btn-sm" onclick="deleteLeave(${l.id})" title="حذف"><i class="fas fa-trash"></i></button>
+                    <button class="btn btn-secondary btn-sm" onclick="prepareToPrintLeave(${l.id})" title="طباعة"><i class="fas fa-print"></i></button>
+                </td>
+            </tr>`;
+        });
+    }
+    
+    function getStatusClass(status) { 
+        return `status-${status}`; 
+    }
+
+    function approveLeave(id) {
+        const leave = leaves.find(l => l.id === id); 
+        if (!leave) return;
+
+        const proceedApproval = () => {
+            const emp = employees.find(e => e.id === leave.employeeId);
+            if (emp && leave.leaveType !== 'إجازة زمنية' && leave.leaveType !== 'إجازة طارئة') { 
+                if (emp.annualLeaves < leave.leaveDays) {
+                    showAlert('رصيد الإجازات غير كافٍ.', 'danger');
+                    return;
+                }
+                emp.annualLeaves -= leave.leaveDays; 
+                EventBus.dispatch('employeesChanged', employees); 
+            }
+            leave.status = 'approved'; 
+
+            if (leave.leaveType === 'إجازة زمنية') {
+                applyTimeLeaveDeduction(leave.employeeId);
+            }
+            if (leave.leaveType === 'إجازة طارئة') {
+                applyEmergencyLeaveDeduction(leave.employeeId);
+            }
+
+            EventBus.dispatch('leavesChanged', leaves); 
+            saveAllToIndexedDB(); 
+            showAlert('تمت الموافقة.', 'success');
+        };
+
+        if (checkLeaveConflict(leave)) {
+            showConfirmModal('تنبيه: الموافقة على هذه الإجازة ستتجاوز الحد المسموح به للقسم. هل تريد المتابعة؟', proceedApproval);
+        } else {
+            proceedApproval();
+        }
+    }
+
+    function rejectLeave(id) {
+        const leave = leaves.find(l => l.id === id); 
+        if (leave) { 
+            leave.status = 'rejected'; 
+            EventBus.dispatch('leavesChanged', leaves); 
+            saveAllToIndexedDB(); 
+            showAlert('تم الرفض.', 'success'); 
+        }
+    }
+    
+    function deleteAllLeaves() { 
+        showConfirmModal('هل أنت متأكد من حذف جميع الإجازات؟ هذا الإجراء لا يمكن التراجع عنه.', () => { 
+            leaves = []; 
+            EventBus.dispatch('leavesChanged', leaves); 
+            saveAllToIndexedDB(); 
+            showAlert('تم حذف جميع الإجازات.', 'success'); 
+        }); 
+    }
+    
+    function deleteLeave(id) { 
+        showConfirmModal('هل أنت متأكد من حذف هذه الإجازة؟', () => { 
+            const leaveIndex = leaves.findIndex(l => l.id === id);
+            if (leaveIndex === -1) return;
+            
+            const leave = leaves[leaveIndex];
+            if (leave && leave.status === 'approved' && leave.leaveType !== 'إجازة زمنية' && leave.leaveType !== 'إجازة طارئة') {
+                const emp = employees.find(e => e.id === leave.employeeId);
+                if (emp) {
+                    emp.annualLeaves += leave.leaveDays;
+                    EventBus.dispatch('employeesChanged', employees);
+                }
+            }
+            leaves.splice(leaveIndex, 1);
+            EventBus.dispatch('leavesChanged', leaves); 
+            saveAllToIndexedDB(); 
+            showAlert('تم حذف الإجازة.', 'success'); 
+        }); 
+    }
+
+    /* ========== Tardiness Management ========== */
+    function selectEmployeeForTardiness(employeeId) {
+        const employee = employees.find(emp => emp.id === employeeId);
+        if (!employee) return;
+        
+        const departmentName = getDepartmentNameById(employee.departmentId);
+        document.getElementById('tardinessEmployeeSearch').value = employee.name;
+        document.getElementById('selectedTardinessEmployeeId').value = employee.id;
+        document.getElementById('selectedTardinessEmployeeDepartment').textContent = `القسم: ${departmentName}`;
+    }
+    
+    function renderTardinessRecords(records = tardinessRecords) {
+        const tableBody = document.getElementById('tardinessTableBody');
+        tableBody.innerHTML = '';
+
+        if (records.length === 0) {
+            tableBody.innerHTML = `<tr><td colspan="4" class="text-center">لا توجد سجلات تأخير</td></tr>`;
+            return;
+        }
+
+        records.sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(record => {
+            const departmentName = getDepartmentNameById(record.departmentId);
+            tableBody.innerHTML += `<tr>
+                <td>${record.employeeName}</td>
+                <td>${departmentName}</td>
+                <td>${record.date}</td>
+                <td>
+                    <button class="btn btn-danger btn-sm" onclick="deleteTardinessRecord(${record.id})" title="حذف"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>`;
+        });
+    }
+
+    function addTardinessRecord() {
+        const employeeId = parseInt(document.getElementById('selectedTardinessEmployeeId').value);
+        const date = document.getElementById('tardinessDate').value;
+
+        if (!employeeId || !date) {
+            showAlert('يرجى اختيار موظف وتحديد التاريخ.', 'danger');
+            return;
+        }
+
+        const employee = employees.find(emp => emp.id == employeeId);
+        if (!employee) {
+            showAlert('الموظف المحدد غير موجود.', 'danger');
+            return;
+        }
+
+        const tardinessDate = new Date(date);
+        const month = tardinessDate.getMonth() + 1;
+        const year = tardinessDate.getFullYear();
+
+        const monthlyCount = tardinessRecords.filter(record => {
+            const recordDate = new Date(record.date);
+            return record.employeeId == employeeId &&
+                   recordDate.getMonth() + 1 === month &&
+                   recordDate.getFullYear() === year;
+        }).length;
+
+        const proceed = () => {
+            const newRecord = {
+                id: Date.now(),
+                employeeId: employeeId,
+                employeeName: employee.name,
+                departmentId: employee.departmentId,
+                date: date,
+            };
+
+            tardinessRecords.push(newRecord);
+            EventBus.dispatch('tardinessChanged', tardinessRecords);
+            saveAllToIndexedDB();
+            showAlert('تم تسجيل التأخير بنجاح.', 'success');
+            document.getElementById('tardinessEmployeeSearch').value = '';
+            document.getElementById('selectedTardinessEmployeeId').value = '';
+            document.getElementById('selectedTardinessEmployeeDepartment').textContent = '';
+        };
+
+        if (monthlyCount >= 2) {
+            showConfirmModal(
+                `هذا هو التأخير رقم ${monthlyCount + 1} للموظف ${employee.name} هذا الشهر. هل أنت متأكد من رغبتك في إضافته؟`,
+                proceed
+            );
+        } else {
+            proceed();
+        }
+    }
+
+    function deleteTardinessRecord(id) {
+        showConfirmModal('هل أنت متأكد من حذف سجل التأخير هذا؟', () => {
+            tardinessRecords = tardinessRecords.filter(record => record.id !== id);
+            EventBus.dispatch('tardinessChanged', tardinessRecords);
+            saveAllToIndexedDB();
+            showAlert('تم حذف سجل التأخير.', 'success');
+        });
+    }
+
+    function deleteAllTardinessRecords() {
+        showConfirmModal('هل أنت متأكد من حذف جميع سجلات التأخير؟ هذا الإجراء لا يمكن التراجع عنه.', () => {
+            tardinessRecords = [];
+            EventBus.dispatch('tardinessChanged', tardinessRecords);
+            saveAllToIndexedDB();
+            showAlert('تم حذف جميع سجلات التأخير.', 'success');
+        });
+    }
+
+    /* ========== Reports Management ========== */
+    function generateDailyReport() {
+        const reportDateISO = document.getElementById('reportDate').value;
+        if (!reportDateISO) {
+            showAlert('يرجى اختيار تاريخ للتقرير.', 'warning');
+            return;
+        }
+
+        const reportDateForDisplay = new Date(reportDateISO + 'T00:00:00Z');
+        const reportDateString = reportDateForDisplay.toLocaleDateString('ar-IQ', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+        const onLeaveIds = new Set();
+        const leavesOnDate = leaves.filter(l => {
+            if (l.status !== 'approved') return false;
+            const isOnDate = reportDateISO >= l.startDate && reportDateISO <= l.endDate;
+            if (isOnDate) onLeaveIds.add(l.employeeId);
+            return isOnDate;
+        });
+
+        const tardinessOnDate = tardinessRecords.filter(t => t.date === reportDateISO);
+
+        const container = document.getElementById('reportContainer');
+        if (leavesOnDate.length === 0 && tardinessOnDate.length === 0) {
+             container.innerHTML = `<div class="alert alert-info mt-4">لا توجد بيانات لعرضها في التقرير للتاريخ المحدد: ${reportDateString}</div>`;
+             return;
+        }
+
+        let html = `
+            <div id="printableReport" class="card p-4 mt-4">
+                <div class="report-header text-center mb-4">
+                    <h2>مديرية بلدية الشطرة</h2>
+                    <h4>تقرير الدوام الرسمي</h4>
+                    <h5>${reportDateString}</h5>
+                </div>
+                <hr>
+        `;
+
+        if (leavesOnDate.length > 0) {
+            html += `
+                <h5 class="mt-3">قائمة المجازين</h5>
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead class="table-light">
+                            <tr><th>اسم الموظف</th><th>القسم</th><th>نوع الإجازة</th><th>المدة</th></tr>
+                        </thead>
+                        <tbody>
+                            ${leavesOnDate.map(l => `
+                                <tr>
+                                    <td>${l.employeeName}</td>
+                                    <td>${getDepartmentNameById(l.departmentId)}</td>
+                                    <td>${l.leaveType}</td>
+                                    <td>${(l.leaveType === 'إجازة زمنية'||l.leaveType === 'إجازة طارئة') ? l.leaveHours + ' ساعة' : l.leaveDays + ' يوم'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        if (tardinessOnDate.length > 0) {
+            html += `
+                <h5 class="mt-4">قائمة المتأخرين</h5>
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead class="table-light">
+                            <tr><th>اسم الموظف</th><th>القسم</th></tr>
+                        </thead>
+                        <tbody>
+                            ${tardinessOnDate.map(t => `
+                                <tr>
+                                    <td>${t.employeeName}</td>
+                                    <td>${getDepartmentNameById(t.departmentId)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+        
+        html += `<div class="text-center mt-4 report-footer">
+                    <p><strong>مجموع المجازين:</strong> ${leavesOnDate.length}</p>
+                    <p><strong>مجموع المتأخرين:</strong> ${tardinessOnDate.length}</p>
+                 </div>`;
+        html += `<div class="text-center mt-4 no-print">
+                    <button class="btn btn-secondary" onclick="printReport()"><i class="fas fa-print"></i> طباعة التقرير</button>
+                 </div>`;
+        html += `</div>`; 
+
+        container.innerHTML = html;
+    }
+
+    function printReport() {
+        printGeneratedReport('reportContainer');
+    }
+
+    /* ========== Analysis & Advanced Reports ========== */
+
+    function printGeneratedReport(sourceContainerId) {
+        const printContainer = document.getElementById('print-container');
+        const sourceContainer = document.getElementById(sourceContainerId);
+
+        if (sourceContainer && sourceContainer.innerHTML.trim() !== '') {
+            printContainer.innerHTML = sourceContainer.innerHTML;
+            window.print();
+            printContainer.innerHTML = ''; // Clear after printing
+        } else {
+            showAlert('لا يوجد محتوى لطباعته. يرجى إنشاء تقرير أولاً.', 'warning');
+        }
+    }
+
+    function populateAnalysisDropdowns() {
+        // Populate years dropdown
+        const yearSelect = document.getElementById('aggReportYear');
+        const currentYear = new Date().getFullYear();
+        yearSelect.innerHTML = '';
+        for (let y = currentYear; y >= currentYear - 5; y--) {
+            yearSelect.innerHTML += `<option value="${y}">${y}</option>`;
+        }
+
+        // Populate custom report dropdowns
+        const customEmpSelect = document.getElementById('customEmployeeSelect');
+        customEmpSelect.innerHTML = '<option value="">الكل</option>';
+        employees.forEach(e => customEmpSelect.innerHTML += `<option value="${e.id}">${e.name}</option>`);
+
+        const customDeptSelect = document.getElementById('customDepartmentSelect');
+        customDeptSelect.innerHTML = '<option value="">الكل</option>';
+        departments.forEach(d => customDeptSelect.innerHTML += `<option value="${d.id}">${d.name}</option>`);
+        
+        // Set default dates
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('customEndDate').value = today;
+        const lastMonth = new Date();
+        lastMonth.setMonth(lastMonth.getMonth() - 1);
+        document.getElementById('customStartDate').value = lastMonth.toISOString().split('T')[0];
+    }
+
+    function toggleAggReportInputs() {
+        const type = document.getElementById('aggReportType').value;
+        document.getElementById('aggMonthContainer').style.display = (type === 'monthly') ? 'block' : 'none';
+    }
+    
+    function toggleCustomReportSelect() {
+        const target = document.getElementById('customReportTarget').value;
+        document.getElementById('customEmployeeSelectContainer').style.display = (target === 'employee') ? 'block' : 'none';
+        document.getElementById('customDepartmentSelectContainer').style.display = (target === 'department') ? 'block' : 'none';
+    }
+
+    function generateAggregatedReport() {
+        const type = document.getElementById('aggReportType').value;
+        const year = document.getElementById('aggReportYear').value;
+        const month = document.getElementById('aggReportMonth').value;
+        const container = document.getElementById('aggregatedReportContainer');
+        
+        if (type === 'monthly') {
+            const startDate = new Date(year, month - 1, 1);
+            const endDate = new Date(year, month, 0);
+            
+            const leavesInMonth = leaves.filter(l => new Date(l.startDate) <= endDate && new Date(l.endDate) >= startDate);
+            const tardinessInMonth = tardinessRecords.filter(t => {
+                const tDate = new Date(t.date);
+                return tDate.getFullYear() == year && tDate.getMonth() == (month - 1);
+            });
+            
+            let html = `<h5>تقرير شهر ${startDate.toLocaleDateString('ar-IQ', {month: 'long'})} ${year}</h5>`;
+            html += `<p><strong>إجمالي الإجازات المعتمدة:</strong> ${leavesInMonth.filter(l=>l.status === 'approved').length}</p>`;
+            html += `<p><strong>إجمالي التأخيرات:</strong> ${tardinessInMonth.length}</p>`;
+            html += generateDetailedReportTable(leavesInMonth, tardinessInMonth);
+            html += `<div class="text-center mt-4 no-print"><button class="btn btn-secondary" onclick="printGeneratedReport('aggregatedReportContainer')"><i class="fas fa-print"></i> طباعة التقرير</button></div>`;
+            container.innerHTML = html;
+
+        } else if (type === 'yearly') {
+            let html = `<h5>تقرير سنة ${year}</h5> <div class="table-responsive"><table class="table table-bordered"><thead><tr><th>الشهر</th><th>إجمالي الإجازات</th><th>إجمالي التأخيرات</th></tr></thead><tbody>`;
+            for(let m = 0; m < 12; m++) {
+                const startDate = new Date(year, m, 1);
+                const endDate = new Date(year, m + 1, 0);
+                const leavesInMonth = leaves.filter(l => l.status==='approved' && new Date(l.startDate) <= endDate && new Date(l.endDate) >= startDate).length;
+                const tardinessInMonth = tardinessRecords.filter(t => new Date(t.date).getFullYear() == year && new Date(t.date).getMonth() == m).length;
+                const monthName = startDate.toLocaleDateString('ar-IQ', { month: 'long' });
+                html += `<tr><td>${monthName}</td><td>${leavesInMonth}</td><td>${tardinessInMonth}</td></tr>`;
+            }
+            html += `</tbody></table></div>`;
+            html += `<div class="text-center mt-4 no-print"><button class="btn btn-secondary" onclick="printGeneratedReport('aggregatedReportContainer')"><i class="fas fa-print"></i> طباعة التقرير</button></div>`;
+            container.innerHTML = html;
+        }
+    }
+
+    function generateCustomReport() {
+        const target = document.getElementById('customReportTarget').value;
+        const employeeId = document.getElementById('customEmployeeSelect').value;
+        const departmentId = document.getElementById('customDepartmentSelect').value;
+        const startDate = document.getElementById('customStartDate').value;
+        const endDate = document.getElementById('customEndDate').value;
+        const container = document.getElementById('customReportContainer');
+
+        if (!startDate || !endDate) {
+            showAlert('يرجى تحديد فترة زمنية.', 'warning');
+            return;
+        }
+
+        let filteredLeaves = leaves.filter(l => l.startDate >= startDate && l.endDate <= endDate);
+        let filteredTardiness = tardinessRecords.filter(t => t.date >= startDate && t.date <= endDate);
+
+        let title = `تقرير مخصص من ${startDate} إلى ${endDate}`;
+        if (target === 'employee' && employeeId) {
+            filteredLeaves = filteredLeaves.filter(l => l.employeeId == employeeId);
+            filteredTardiness = filteredTardiness.filter(t => t.employeeId == employeeId);
+            title += ` للموظف: ${employees.find(e=>e.id==employeeId).name}`;
+        } else if (target === 'department' && departmentId) {
+            filteredLeaves = filteredLeaves.filter(l => l.departmentId == departmentId);
+            filteredTardiness = filteredTardiness.filter(t => t.departmentId == departmentId);
+            title += ` للقسم: ${departments.find(d=>d.id==departmentId).name}`;
+        }
+
+        let reportHTML = `<h5>${title}</h5>` + generateDetailedReportTable(filteredLeaves, filteredTardiness);
+        reportHTML += `<div class="text-center mt-4 no-print"><button class="btn btn-secondary" onclick="printGeneratedReport('customReportContainer')"><i class="fas fa-print"></i> طباعة التقرير</button></div>`;
+        container.innerHTML = reportHTML;
+    }
+    
+    function generateDetailedReportTable(leavesData, tardinessData) {
+        if (leavesData.length === 0 && tardinessData.length === 0) {
+            return '<div class="alert alert-info mt-3">لا توجد بيانات لعرضها في هذا التقرير.</div>';
+        }
+        let html = '<div class="table-responsive mt-3">';
+        if (leavesData.length > 0) {
+            html += '<h6>تفاصيل الإجازات</h6><table class="table table-sm table-bordered"><thead><tr><th>الموظف</th><th>القسم</th><th>النوع</th><th>البداية</th><th>النهاية</th><th>الحالة</th></tr></thead><tbody>';
+            leavesData.forEach(l => {
+                html += `<tr>
+                    <td>${l.employeeName}</td><td>${getDepartmentNameById(l.departmentId)}</td>
+                    <td>${l.leaveType}</td><td>${l.startDate}</td><td>${l.endDate}</td>
+                    <td><span class="${getStatusClass(l.status)}">${translateStatus(l.status)}</span></td>
+                </tr>`;
+            });
+            html += '</tbody></table>';
+        }
+        if (tardinessData.length > 0) {
+            html += '<h6 class="mt-4">تفاصيل التأخيرات</h6><table class="table table-sm table-bordered"><thead><tr><th>الموظف</th><th>القسم</th><th>التاريخ</th></tr></thead><tbody>';
+            tardinessData.forEach(t => {
+                html += `<tr>
+                    <td>${t.employeeName}</td><td>${getDepartmentNameById(t.departmentId)}</td>
+                    <td>${t.date}</td>
+                </tr>`;
+            });
+            html += '</tbody></table>';
+        }
+        html += '</div>';
+        return html;
+    }
+
+    /* ========== Backup & Restore ========== */
+    function backupData() {
+        showConfirmModal('هل تريد إنشاء نسخة احتياطية من جميع البيانات؟', () => {
+            const data = {
+                departments,
+                employees,
+                leaves,
+                notifications,
+                leaveTypes,
+                tardinessRecords
+            };
+            try {
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = "hr_system_backup.json";
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                showAlert('تم نسخ البيانات احتياطيًا بنجاح.', 'success');
+            } catch (error) {
+                console.error("Backup Error:", error);
+                showAlert('فشل النسخ الاحتياطي.', 'danger');
+            }
+        });
+    }
+
+    function restoreData() {
+        showConfirmModal('هل تريد استعادة البيانات من نسخة احتياطية؟ سيتم استبدال جميع البيانات الحالية.', () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = e => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = event => {
+                    try {
+                        const data = JSON.parse(event.target.result);
+                        if (data && data.departments && data.employees && data.leaves) {
+                            departments = data.departments || [];
+                            employees = data.employees || [];
+                            leaves = data.leaves || [];
+                            notifications = data.notifications || [];
+                            leaveTypes = data.leaveTypes || [];
+                            tardinessRecords = data.tardinessRecords || [];
+                            
+                            // تنظيف البيانات بعد الاستعادة
+                            cleanupInvalidDates();
+                            
+                            saveAllToIndexedDB();
+
+                            EventBus.dispatch('departmentsChanged', departments);
+                            EventBus.dispatch('employeesChanged', employees);
+                            EventBus.dispatch('leavesChanged', leaves);
+                            EventBus.dispatch('notificationsChanged', notifications);
+                            EventBus.dispatch('leaveTypesChanged', leaveTypes);updateLeaveTypeDropdown(leaveTypes);
+                            EventBus.dispatch('tardinessChanged', tardinessRecords);
+                            
+                            showAlert('تم استعادة البيانات بنجاح.', 'success');
+                        } else {
+                            showAlert('ملف النسخ الاحتياطي غير صالح.', 'danger');
+                        }
+                    } catch (error) {
+                        console.error("Restore Error:", error);
+                        showAlert('فشل في قراءة ملف النسخ الاحتياطي.', 'danger');
+                    }
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        });
+    }
+
+    /* ========== Print & Export ========== */
+    function toggleAllMonthsOption() {
+        const includePast = document.getElementById('printIncludePastLeaves').checked;
+        document.getElementById('printIncludeAllMonths').disabled = !includePast;
+        if (!includePast) {
+            document.getElementById('printIncludeAllMonths').checked = false;
+        }
+    }
+
+    function prepareToPrintLeave(leaveId) {
+        currentLeaveToPrintId = leaveId;
+        new bootstrap.Modal(document.getElementById('printOptionsModal')).show();
+    }
+
+    function openPrintOptionsModal() {
+        currentLeaveToPrintId = null;
+        new bootstrap.Modal(document.getElementById('printOptionsModal')).show();
+    }
+    
+    function confirmPrintLeaves() {
+        const includePast = document.getElementById('printIncludePastLeaves').checked;
+        const includeAllMonths = document.getElementById('printIncludeAllMonths').checked;
+        let scope = 'none';
+        if (includePast) {
+            scope = includeAllMonths ? 'all' : 'currentMonth';
+        }
+        bootstrap.Modal.getInstance(document.getElementById('printOptionsModal')).hide();
+        printLeaves(scope); 
+    }
+
+    function printLeaves(scope = 'none') {
+        let leavesToPrint = [];
+        let employeeId = null;
+        let mainLeave = null;
+
+        if (currentLeaveToPrintId) {
+            mainLeave = leaves.find(l => l.id === currentLeaveToPrintId);
+            if (!mainLeave) { 
+                showAlert('الإجازة المحددة غير موجودة.', 'danger'); 
+                return; 
+            }
+            leavesToPrint.push(mainLeave);
+            employeeId = mainLeave.employeeId;
+        } else {
+            employeeId = document.getElementById('selectedEmployeeId').value;
+            if (!employeeId) { 
+                showAlert('يرجى اختيار الموظف أولاً.', 'warning'); 
+                return; 
+            }
+            const selectedIds = Array.from(document.querySelectorAll('.export-checkbox:checked')).map(cb => +cb.value);
+            leavesToPrint = leaves.filter(l => selectedIds.includes(l.id) && l.employeeId == employeeId);
+        }
+        
+        if (scope !== 'none' && mainLeave) {
+            const mainLeaveDate = new Date(mainLeave.startDate);
+            const mainLeaveMonth = mainLeaveDate.getMonth();
+            const mainLeaveYear = mainLeaveDate.getFullYear();
+
+            const pastLeaves = leaves.filter(l => {
+                if (l.employeeId != employeeId || !isLeavePast(l) || leavesToPrint.some(lp => lp.id === l.id) || l.leaveType !== 'إجازة زمنية') {
+                    return false;
+                }
+                if (scope === 'all') {
+                    return true;
+                }
+                if (scope === 'currentMonth') {
+                    const pastLeaveDate = new Date(l.startDate);
+                    return pastLeaveDate.getMonth() === mainLeaveMonth && pastLeaveDate.getFullYear() === mainLeaveYear;
+                }
+                return false;
+            });
+            leavesToPrint = leavesToPrint.concat(pastLeaves);
+        }
+
+        if (leavesToPrint.length === 0) { 
+            toastr.warning('لا توجد إجازات للطباعة.'); 
+            return; 
+        }
+
+        const employeeName = employees.find(e => e.id == employeeId).name;
+        const printWindow = window.open('', '', 'width=900,height=700');
+        
+        let htmlContent = `<html><head><meta charset='utf-8'><title>طباعة</title><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet"><style>body{direction:rtl;font-family:'Cairo',sans-serif;margin:40px; position: relative; min-height: 95vh;} p { font-size: 18px; margin: 10px 0; } table{width:100%;border-collapse:collapse;margin-top:20px;}th,td{border:1px solid #999;padding:8px;text-align:center;} h1,h3{text-align:center;} .signature { position: absolute; bottom: 40px; left: 40px; text-align: left; }</style></head><body>`;
+        
+        if (mainLeave) {
+             htmlContent += `
+                <p>إلى: السيد مدير البلدية المحترم</p>
+                <h1 style="text-align: center; margin: 20px 0;">طلب إجازة</h1>
+                <p>يرجى التفضل بالموافقة على منحي الاجازة المذكوره ادناه:</p>
+                ${generateLeavesTableHTML([mainLeave])}
+            `;
+            const pastLeavesForPrint = leavesToPrint.filter(l => l.id !== mainLeave.id);
+            if (pastLeavesForPrint.length > 0) {
+                htmlContent += `<hr><h3>سجل الإجازات السابقة</h3>${generateLeavesTableHTML(pastLeavesForPrint)}`;
+            }
+            htmlContent += `
+                <div class="signature">
+                    <p>مع التقدير...</p>
+                    <p>توقيع الموظف: __________________</p>
+                </div>
+            `;
+        } else {
+            htmlContent += `<h3>تقرير إجازات الموظف: ${employeeName}</h3>${generateLeavesTableHTML(leavesToPrint)}`;
+        }
+        
+        htmlContent += `</body></html>`;
+
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+        setTimeout(() => printWindow.print(), 500);
+    }
+    
+    function openExportOptionsModal() { 
+        new bootstrap.Modal(document.getElementById('exportOptionsModal')).show(); 
+    }
+    
+    function confirmExportLeaves() {
+        const includePast = document.getElementById('includePastLeavesCheckbox').checked;
+        bootstrap.Modal.getInstance(document.getElementById('exportOptionsModal')).hide();
+        exportLeavesToWord(includePast);
+    }
+    
+    function exportLeavesToWord(includePast = false) {
+        const employeeId = document.getElementById('selectedEmployeeId').value; 
+        if (!employeeId) { 
+            showAlert('اختر موظفًا أولاً.', 'warning'); 
+            return; 
+        }
+        const selectedIds = Array.from(document.querySelectorAll('.export-checkbox:checked')).map(cb => +cb.value);
+        let leavesToExport = leaves.filter(l => selectedIds.includes(l.id) && l.employeeId == employeeId);
+        if (includePast) leavesToExport = leavesToExport.concat(leaves.filter(l => l.employeeId == employeeId && isLeavePast(l) && !selectedIds.includes(l.id)));
+        if (leavesToExport.length === 0) { 
+            toastr.warning('لا توجد إجازات محددة.'); 
+            return; 
+        }
+        let htmlContent = `<html><head><meta charset='utf-8'></head><body style="direction:rtl;">${generateLeavesTableHTML(leavesToExport)}</body></html>`;
+        const blob = new Blob(['\ufeff', htmlContent], { type: 'application/msword' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a'); 
+        link.href = url; 
+        link.download = 'leaves.doc'; 
+        link.click();
+    }
+    
+    function generateLeavesTableHTML(data) {
+        let table = `<table border="1"><thead><tr><th>الموظف</th><th>القسم</th><th>النوع</th><th>البداية</th><th>النهاية</th><th>المدة</th><th>الحالة</th></tr></thead><tbody>`;
+        data.forEach(l => {
+            const endDateDisplay = (l.leaveType === 'إجازة زمنية' || l.leaveType === 'إجازة طارئة') ? l.startDate : l.endDate;
+            const departmentName = getDepartmentNameById(l.departmentId);
+            table += `<tr><td>${l.employeeName}</td><td>${departmentName}</td><td>${l.leaveType}</td><td>${l.startDate}</td><td>${endDateDisplay}</td>
+                      <td>${(l.leaveType==='إجازة زمنية'||l.leaveType==='إجازة طارئة')?l.leaveHours+' س':l.leaveDays+' ي'}</td><td>${translateStatus(l.status)}</td></tr>`;
+        });
+        return table + `</tbody></table>`;
+    }
+
+    function deleteAllPastTimeLeaves() {
+        showConfirmModal('هل أنت متأكد من حذف جميع الإجازات الزمنية السابقة؟ هذا الإجراء لا يمكن التراجع عنه.', () => {
+            leaves = leaves.filter(l => !(l.leaveType === 'إجازة زمنية' && isLeavePast(l)));
+            EventBus.dispatch('leavesChanged', leaves);
+            saveAllToIndexedDB();
+            showAlert('تم حذف جميع الإجازات الزمنية السابقة بنجاح.', 'success');
+        });
+    }
+
+    /* ========== Filtering & Sorting ========== */
+    function filterTable(searchId, tableBodyId) {
+        const query = document.getElementById(searchId).value.toLowerCase();
+        Array.from(document.getElementById(tableBodyId).rows).forEach(row => {
+            row.style.display = row.textContent.toLowerCase().includes(query) ? "" : "none";
+        });
+    }
+    
+    function applyFilters() {
+        currentLeaveFilters.search = document.getElementById('leaveTableSearch').value;
+        currentLeaveFilters.type = document.getElementById('filterType').value;
+        currentLeaveFilters.status = document.getElementById('filterStatus').value;
+        currentLeaveFilters.start = document.getElementById('filterStartDate').value;
+        currentLeaveFilters.end = document.getElementById('filterEndDate').value;
+        renderLeaves();
+    }
+
+    function sortTable(tableId, n, type = 'string') {
+        const table = document.getElementById(tableId);
+        let rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+        switching = true;
+        dir = "asc"; 
+        
+        while (switching) {
+            switching = false;
+            rows = table.rows;
+            for (i = 1; i < (rows.length - 1); i++) {
+                shouldSwitch = false;
+                x = rows[i].getElementsByTagName("TD")[n];
+                y = rows[i + 1].getElementsByTagName("TD")[n];
+                
+                let valX = x.innerHTML.toLowerCase();
+                let valY = y.innerHTML.toLowerCase();
+                
+                if (type === 'number') {
+                    valX = parseFloat(valX);
+                    valY = parseFloat(valY);
+                } else if (type === 'date') {
+                    valX = new Date(valX);
+                    valY = new Date(valY);
+                }
+                
+                if (dir == "asc") {
+                    if (valX > valY) {
+                        shouldSwitch = true;
+                        break;
+                    }
+                } else if (dir == "desc") {
+                    if (valX < valY) {
+                        shouldSwitch = true;
+                        break;
+                    }
+                }
+            }
+            if (shouldSwitch) {
+                rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+                switching = true;
+                switchcount ++;      
+            } else {
+                if (switchcount == 0 && dir == "asc") {
+                    dir = "desc";
+                    switching = true;
+                }
+            }
+        }
+    }
+
+    /* ========== Notifications ========== */
+    function toggleNotifications() {
+        const dropdown = document.getElementById('notificationsContainer');
+        dropdown.classList.toggle('active');
+        if (dropdown.classList.contains('active')) {
+            notifications.forEach(n => n.read = true);
+            EventBus.dispatch('notificationsChanged', notifications);
+            saveAllToIndexedDB();
+        }
+    }
+    
+    function addNotification(notification) {
+        notifications.unshift({ ...notification, id: Date.now(), read: false });
+        EventBus.dispatch('notificationsChanged', notifications);
+        saveAllToIndexedDB();
+    }
+    
+    function renderNotifications() { 
+        const container = document.getElementById('notificationsContainer');
+        container.innerHTML = notifications.length > 0 ? '' : '<div class="notification-item">لا توجد إشعارات</div>';
+        notifications.slice(0, 10).forEach(n => {
+            container.innerHTML += `<div class="notification-item ${n.read ? '' : 'unread'}">${n.message}</div>`;
+        });
+    }
+    
+    function updateNotificationBadge() {
+        const badge = document.getElementById('notificationBadge');
+        const count = notifications.filter(n => !n.read).length;
+        badge.textContent = count;
+        badge.style.display = count > 0 ? 'block' : 'none';
+     }
+     
+    function checkLeaveEndings() { 
+        const today = new Date().toISOString().split('T')[0];
+        leaves.filter(l => l.endDate === today && l.status === 'approved').forEach(l => addNotification({ message: `انتهت إجازة ${l.employeeName}.` }));
+    }
+
+    /* ========== Chart & Calendar ========== */
+    let leaveChart = null;
+    function renderLeaveChart() {
+        if (typeof Chart === 'undefined') return;
+        const ctx = document.getElementById('leaveChart').getContext('2d');
+        if (leaveChart) leaveChart.destroy();
+        const approved = leaves.filter(l => l.status === 'approved');
+        const labels = [...new Set(approved.map(l => l.leaveType))];
+        const data = labels.map(label => approved.filter(l => l.leaveType === label).length);
+        leaveChart = new Chart(ctx, { 
+            type: 'bar', 
+            data: { 
+                labels, 
+                datasets: [{ 
+                    label: 'الإجازات المقبولة', 
+                    data, 
+                    backgroundColor: '#0055aa' 
+                }] 
+            } 
+        });
+    }
+    
+    let calendar = null;
+    function renderCalendar() {
+        if (typeof FullCalendar === 'undefined') return;
+        const calendarEl = document.getElementById('calendar');
+        if (calendar) calendar.destroy();
+        
+        // Filter and map events with proper date validation
+        const events = leaves
+            .filter(l => l.status === 'approved')
+            .map(l => {
+                try {
+                    const startDate = new Date(l.startDate);
+                    const endDate = new Date(l.endDate);
+                    
+                    // Validate dates
+                    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+                        console.warn('Invalid date found in leave record:', l);
+                        return null;
+                    }
+                    
+                    // Add 1 day to end date for FullCalendar to display correctly
+                    const adjustedEndDate = new Date(endDate.getTime() + 86400000);
+                    
+                    return {
+                        title: `${l.employeeName} (${l.leaveType})`,
+                        start: startDate,
+                        end: adjustedEndDate,
+                        color: getStatusColor(l.status),
+                        description: l.notes
+                    };
+                } catch (error) {
+                    console.error('Error processing leave for calendar:', l, error);
+                    return null;
+                }
+            })
+            .filter(event => event !== null); // Remove null events
+
+        calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            events: events,
+            eventDisplay: 'block',
+            eventTimeFormat: {
+                hour: '2-digit',
+                minute: '2-digit',
+                meridiem: 'short'
+            }
+        });
+        
+        calendar.render();
+    }
+    
+    let departmentComparisonChart = null;
+    function renderDepartmentLeaveComparisonChart() {
+        if (typeof Chart === 'undefined') return;
+        const ctx = document.getElementById('departmentComparisonChart').getContext('2d');
+        if (departmentComparisonChart) departmentComparisonChart.destroy();
+        
+        const departmentLeaves = {};
+        departments.forEach(d => departmentLeaves[d.id] = 0);
+        
+        leaves.filter(l => l.status === 'approved' && l.leaveType !== 'إجازة زمنية' && l.leaveType !== 'إجازة طارئة').forEach(l => {
+            if (departmentLeaves.hasOwnProperty(l.departmentId)) {
+                departmentLeaves[l.departmentId] += l.leaveDays;
+            }
+        });
+        
+        departmentComparisonChart = new Chart(ctx, { 
+            type: 'bar', 
+            data: { 
+                labels: departments.map(d => d.name), 
+                datasets: [{ 
+                    label: 'إجمالي أيام الإجازات لكل قسم', 
+                    data: Object.values(departmentLeaves),
+                    backgroundColor: ['#3e95cd', '#8e5ea2','#3cba9f','#e8c3b9','#c45850', '#ffc107', '#17a2b8'],
+                }] 
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    }
+
+    let leaveTypeDistributionChart = null;
+    function renderLeaveTypeDistributionChart() {
+        if (typeof Chart === 'undefined') return;
+        const ctx = document.getElementById('leaveTypeDistributionChart').getContext('2d');
+        if (leaveTypeDistributionChart) leaveTypeDistributionChart.destroy();
+
+        const leaveTypeCounts = {};
+        leaveTypes.forEach(type => leaveTypeCounts[type] = 0);
+
+        leaves.filter(l => l.status === 'approved').forEach(l => {
+            if (leaveTypeCounts.hasOwnProperty(l.leaveType)) {
+                 leaveTypeCounts[l.leaveType]++;
+            }
+        });
+
+        leaveTypeDistributionChart = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: Object.keys(leaveTypeCounts),
+                datasets: [{
+                    data: Object.values(leaveTypeCounts),
+                    backgroundColor: ['#ff6384', '#36a2eb', '#ffce56', '#4bc0c0', '#9966ff', '#ff9f40'],
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    }
+    
+    function getStatusColor(status) { 
+        return { 
+            approved: '#28a745', 
+            pending: '#ffc107', 
+            rejected: '#dc3545' 
+        }[status] || status; 
+    }
+
+    /* ========== Settings ========== */
+    function renderSettings() {
+        document.getElementById('settingsPermanentAnnual').value = settings.permanent.annualLeaves;
+        document.getElementById('settingsPermanentTimeHours').value = settings.permanent.maxTimeLeaveHours;
+        document.getElementById('settingsDailyMonthly').value = settings.daily.monthlyLeaves;
+        document.getElementById('settingsDailyTimeHours').value = settings.daily.maxTimeLeaveHours;
+        document.getElementById('settingsDeductionEnabled').checked = settings.timeLeaveDeduction.enabled;
+        document.getElementById('settingsDeductionHours').value = settings.timeLeaveDeduction.hoursThreshold;
+        document.getElementById('settingsEmergencyLimit').value = settings.emergencyLeave.limitPerMonth;
+        document.getElementById('settingsEmergencyDeductionEnabled').checked = settings.emergencyLeave.deduction.enabled;
+        document.getElementById('settingsEmergencyDeductionCount').value = settings.emergencyLeave.deduction.count;
+    }
+
+    function saveSettings() {
+        settings.permanent.annualLeaves = parseInt(document.getElementById('settingsPermanentAnnual').value) || 36;
+        settings.permanent.maxTimeLeaveHours = parseInt(document.getElementById('settingsPermanentTimeHours').value) || 8;
+        settings.daily.monthlyLeaves = parseInt(document.getElementById('settingsDailyMonthly').value) || 2;
+        settings.daily.maxTimeLeaveHours = parseInt(document.getElementById('settingsDailyTimeHours').value) || 4;
+        settings.timeLeaveDeduction.enabled = document.getElementById('settingsDeductionEnabled').checked;
+        settings.timeLeaveDeduction.hoursThreshold = parseInt(document.getElementById('settingsDeductionHours').value) || 6;
+        settings.emergencyLeave.limitPerMonth = parseInt(document.getElementById('settingsEmergencyLimit').value) || 8;
+        settings.emergencyLeave.deduction.enabled = document.getElementById('settingsEmergencyDeductionEnabled').checked;
+        settings.emergencyLeave.deduction.count = parseInt(document.getElementById('settingsEmergencyDeductionCount').value) || 4;
+        
+        saveSettingsToIndexedDB();
+        showAlert('تم حفظ الإعدادات بنجاح!', 'success');
+    }
+
+    function applyTimeLeaveDeduction(employeeId) {
+        if (!settings.timeLeaveDeduction.enabled) return;
+
+        const employee = employees.find(e => e.id === employeeId);
+        if (!employee) return;
+
+        // **MODIFIED:** This now gets all unprocessed time leaves, regardless of month.
+        const relevantTimeLeaves = leaves.filter(l => 
+            l.employeeId === employeeId &&
+            l.leaveType === 'إجازة زمنية' &&
+            l.status === 'approved' &&
+            !l.deductionApplied
+        );
+
+        let totalHours = relevantTimeLeaves.reduce((sum, l) => sum + l.leaveHours, 0);
+
+        if (totalHours >= settings.timeLeaveDeduction.hoursThreshold) {
+            const daysToDeduct = Math.floor(totalHours / settings.timeLeaveDeduction.hoursThreshold);
+            
+            // إضافة تأكيد قبل الخصم
+            showConfirmModal(
+                `سيتم خصم ${daysToDeduct} يوم من رصيد الموظف ${employee.name} بسبب تجاوز الحد الأقصى للإجازات الزمنية (${totalHours} ساعة). هل تريد المتابعة؟`,
+                () => {
+                    if (employee.annualLeaves >= daysToDeduct) {
+                        employee.annualLeaves -= daysToDeduct;
+
+                        // Mark the leaves that contributed to the deduction as processed.
+                        const hoursToAccountFor = daysToDeduct * settings.timeLeaveDeduction.hoursThreshold;
+                        let accountedHours = 0;
+                        for (const l of relevantTimeLeaves) {
+                            if (accountedHours < hoursToAccountFor) {
+                                l.deductionApplied = true;
+                                accountedHours += l.leaveHours;
+                            } else {
+                                break;
+                            }
+                        }
+
+                        const message = `تم خصم ${daysToDeduct} يوم من رصيد الموظف ${employee.name} لتجاوزه حد الساعات الزمنية التراكمي.`;
+                        showAlert(message, 'info');
+                        addNotification({ message });
+
+                        EventBus.dispatch('employeesChanged', employees);
+                        EventBus.dispatch('leavesChanged', leaves);
+                        saveAllToIndexedDB();
+                    } else {
+                         const message = `حاول النظام خصم يوم من رصيد ${employee.name} لكن الرصيد غير كافٍ.`;
+                         showAlert(message, 'warning');
+                         addNotification({ message });
+                    }
+                }
+            );
+        }
+    }
+
+    function applyEmergencyLeaveDeduction(employeeId) {
+        if (!settings.emergencyLeave.deduction.enabled || settings.emergencyLeave.deduction.count <= 0) return;
+
+        const employee = employees.find(e => e.id === employeeId);
+        if (!employee) return;
+
+        // حساب مجموع الساعات للإجازات الطارئة غير المحسوبة
+        const unprocessedEmergencyLeaves = leaves.filter(l => 
+            l.employeeId === employeeId &&
+            l.leaveType === 'إجازة طارئة' &&
+            l.status === 'approved' &&
+            !l.emergencyDeductionApplied
+        );
+
+        const totalEmergencyHours = unprocessedEmergencyLeaves.reduce((sum, l) => sum + l.leaveHours, 0);
+
+        if (totalEmergencyHours >= settings.emergencyLeave.deduction.count) {
+            const daysToDeduct = Math.floor(totalEmergencyHours / settings.emergencyLeave.deduction.count);
+            
+            // إضافة تأكيد قبل الخصم
+            showConfirmModal(
+                `سيتم خصم ${daysToDeduct} يوم من رصيد الموظف ${employee.name} بسبب تجاوز الحد الأقصى للإجازات الطارئة (${totalEmergencyHours} ساعة). هل تريد المتابعة؟`,
+                () => {
+                    if (employee.annualLeaves >= daysToDeduct) {
+                        employee.annualLeaves -= daysToDeduct;
+
+                        // وضع علامة على الإجازات التي تم احتسابها في الخصم
+                        const hoursToAccountFor = daysToDeduct * settings.emergencyLeave.deduction.count;
+                        let accountedHours = 0;
+                        for (const l of unprocessedEmergencyLeaves) {
+                            if (accountedHours < hoursToAccountFor) {
+                                l.emergencyDeductionApplied = true;
+                                accountedHours += l.leaveHours;
+                            } else {
+                                break;
+                            }
+                        }
+
+                        const message = `تم خصم ${daysToDeduct} يوم من رصيد الموظف ${employee.name} لتجاوزه حد الإجازات الطارئة التراكمي.`;
+                        showAlert(message, 'info');
+                        addNotification({ message });
+
+                        EventBus.dispatch('employeesChanged', employees);
+                        EventBus.dispatch('leavesChanged', leaves);
+                        saveAllToIndexedDB();
+                    } else {
+                        const message = `حاول النظام خصم يوم من رصيد ${employee.name} بسبب الإجازات الطارئة لكن الرصيد غير كافٍ.`;
+                        showAlert(message, 'warning');
+                        addNotification({ message });
+                    }
+                }
+            );
+        }
+    }
+
+    /* ========== Helper Functions ========== */
+    function getDepartmentNameById(id) {
+        const dept = departments.find(d => d.id === id);
+        return dept ? dept.name : "قسم محذوف";
+    }
+
+    function openEmployeePreviousLeaves(employeeId) {
+        currentProfileEmployeeId = employeeId;
+        const modalBody = document.querySelector('#employeeLeaveTableModal tbody');
+        modalBody.innerHTML = '';
+        const employeeLeaves = leaves.filter(l => l.employeeId == employeeId && isLeavePast(l));
+        
+        if (employeeLeaves.length === 0) {
+            modalBody.innerHTML = `<tr><td colspan="7" class="text-center">لا توجد إجازات سابقة</td></tr>`;
+        } else {
+            employeeLeaves.forEach(l => {
+                const endDateDisplay = (l.leaveType === 'إجازة زمنية' || l.leaveType === 'إجازة طارئة') ? l.startDate : l.endDate;
+                const departmentName = getDepartmentNameById(l.departmentId);
+                modalBody.innerHTML += `<tr>
+                    <td>${l.startDate}</td>
+                    <td>${endDateDisplay}</td>
+                    <td>${(l.leaveType==='إجازة زمنية'||l.leaveType==='إجازة طارئة')?l.leaveHours+' س':l.leaveDays+' ي'}</td>
+                    <td>${l.leaveType}</td>
+                    <td>${departmentName}</td>
+                    <td>${translateStatus(l.status)}</td>
+                    <td>
+                        <button class="btn btn-danger btn-sm" onclick="deleteLeave(${l.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>`;
+            });
+        }
+        new bootstrap.Modal(document.getElementById('previousLeavesModal')).show();
+    }
+    
+    function deletePreviousLeaves(employeeId) {
+        showConfirmModal('هل أنت متأكد من حذف جميع الإجازات السابقة لهذا الموظف؟ هذا الإجراء لا يمكن التراجع عنه.', () => {
+             leaves = leaves.filter(l => !(l.employeeId === employeeId && isLeavePast(l)));
+             EventBus.dispatch('leavesChanged', leaves);
+             saveAllToIndexedDB();
+             showAlert('تم حذف جميع الإجازات السابقة بنجاح.', 'success');
+             bootstrap.Modal.getInstance(document.getElementById('previousLeavesModal')).hide();
+        });
+    }
+    
+    function renewDailyLeaves() {
+        const today = new Date(), 
+              currentYM = `${today.getFullYear()}-${today.getMonth() + 1}`;
+        let changed = false;
+        employees.forEach(e => {
+            if (e.type === 'daily' && e.lastRenewalDate !== currentYM) {
+                e.annualLeaves = settings.daily.monthlyLeaves; 
+                e.lastRenewalDate = currentYM; 
+                changed = true;
+            }
+        });
+        if (changed) { 
+            EventBus.dispatch('employeesChanged', employees); 
+            saveAllToIndexedDB(); 
+        }
+    }
+    
+    function showLoading() { 
+        const overlay = document.getElementById('loadingOverlay');
+        if (overlay) overlay.style.display = 'flex'; 
+    }
+    
+    function hideLoading() { 
+        const overlay = document.getElementById('loadingOverlay');
+        if (overlay) overlay.style.display = 'none'; 
+    }
+    
+    function translateStatus(status) { 
+        return { 
+            pending: 'قيد الانتظار', 
+            approved: 'مقبولة', 
+            rejected: 'مرفوضة' 
+        }[status] || status; 
+    }
+
+    function startHRSystem() {
+        const overlay = document.getElementById('welcomeOverlay');
+        overlay.classList.add('hidden');
+        setTimeout(() => overlay.style.display = 'none', 500);
+    }
+
+    /* ========== Global Modal Accessibility Fix ========== */
+    function initializeModalAccessibility() {
+        document.querySelectorAll('.modal').forEach(modal => {
+            // When modal is about to be hidden
+            modal.addEventListener('hide.bs.modal', () => {
+                // Blur any focused element inside the modal
+                const focusedElement = modal.querySelector(':focus');
+                if (focusedElement) {
+                    focusedElement.blur();
+                }
+            });
+
+            // When modal is fully hidden
+            modal.addEventListener('hidden.bs.modal', () => {
+                // Double-check no elements are focused
+                setTimeout(() => {
+                    const stillFocused = modal.querySelector(':focus');
+                    if (stillFocused) {
+                        stillFocused.blur();
+                    }
+                }, 50);
+            });
+        });
+    }
+
+    /* ========== Page Load & Init ========== */
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeIndexedDB();
+        initializeEventSubscriptions();
+        initializeModalAccessibility();
+        
+        document.getElementById('startButton').addEventListener('click', startHRSystem);
+
+        setupEmployeeSearch('leaveEmployeeSearch', 'employeeSearchResults', selectEmployeeForLeave);
+        setupEmployeeSearch('tardinessEmployeeSearch', 'tardinessEmployeeSearchResults', selectEmployeeForTardiness);
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.position-relative')) {
+                document.querySelectorAll('.list-group.position-absolute').forEach(el => {
+                    el.style.display = 'none';
+                });
+            }
+        });
+        
+        window.addEventListener('scroll', () => {
+            const footer = document.querySelector('footer');
+            const header = document.querySelector('header');
+            if (!footer || !header) return;
+            const scrolled = window.scrollY > 50;
+            footer.style.transform = scrolled ? "translateY(100%)" : "translateY(0)";
+            header.classList.toggle('scrolled', window.scrollY > 100);
+        });
+    });
+    </script>
+
+</body>
+</html>

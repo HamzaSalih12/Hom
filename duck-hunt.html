@@ -135,7 +135,9 @@ const S = {
   phase: 'start', level: 1, score: 0, best: loadNum('duckBest'), combo: 0, maxCombo: 0,
   shells: SHELLS, reloading: 0, spawned: 0, results: [], ducks: [], feathers: [], puffs: [], rings: [], pops: [], splashes: [],
   aim: { x: 0, y: 0 }, recoil: 0, flash: 0, shake: 0, tt: 0, spawnT: 90, shots: 0, hits: 0, doubles: 0,
-  muted: loadNum('duckMuted') === 1, pumpT: 0, cam: { x: 0, y: 0 }, slow: 1, slowT: 1, focus: null, zoom: 1, casings: [], fish: [], tracer: null
+  muted: loadNum('duckMuted') === 1, pumpT: 0, cam: { x: 0, y: 0 }, slow: 1, slowT: 1, focus: null, zoom: 1, casings: [], fish: [], tracer: null,
+  gun: { ang: -1.2, angV: 0, kick: 0, kickV: 0, roll: 0, rollV: 0, lastAx: 0, lastAy: 0, speed: 0 },
+  dog: { mode: 'hide', x: 0, y: 0, tx: 0, t: 0, duck: null, queue: [] }
 };
 const theme = () => THEMES[(S.level - 1) % THEMES.length];
 const need = () => Math.min(5 + S.level, 9);
@@ -292,6 +294,8 @@ const sfx = {
   splash(){ noise(0.5, 'lowpass', 1200, 300, 0.55, 1); noise(0.25, 'bandpass', 2500, 1500, 0.2, 1.5, 0.02); tone('sine', 180, 60, 0.25, 0.25); },
   escape(){ tone('sine', 520, 260, 0.35, 0.05, 0, 0.004, false); },
   combo(n){ for (let i = 0; i < Math.min(n, 5); i++) tone('triangle', 660 * Math.pow(1.122, i), 660 * Math.pow(1.122, i), 0.16, 0.07, 0.15 + i * 0.06, 0.004, false); },
+  bark(){ for (let i = 0; i < 2; i++) { const t0 = i * 0.22; tone('sawtooth', 320, 180, 0.12, 0.22, t0, 0.005); noise(0.1, 'bandpass', 900, 500, 0.5, 1.5, t0); tone('square', 160, 110, 0.1, 0.08, t0, 0.005); } },
+  laugh(){ for (let i = 0; i < 4; i++) { const t0 = i * 0.16; tone('sawtooth', 500 - i * 40, 380 - i * 30, 0.1, 0.1, t0, 0.005, false); noise(0.08, 'bandpass', 1400, 900, 0.3, 2, t0, false); } },
   click(){ tone('sine', 660, 880, 0.06, 0.08, 0, 0.004, false); },
   fanfare(stars){
     const notes = stars >= 2 ? [523, 659, 784, 1047] : stars === 1 ? [523, 659, 784] : [392, 349, 330];
@@ -341,6 +345,7 @@ function fire(){
   if (S.shells <= 0) { sfx.empty(); $('reloadTxt').textContent = 'فارغة! اضغط R أو الطلقات للتلقيم'; reload(); return; }
   S.shells--; S.shots++;
   S.recoil = 1; S.flash = 1; S.shake = REDUCED ? 0 : 16;
+  S.gun.kickV += 0.11 * U; S.gun.angV -= 0.07; S.gun.rollV += (Math.random() - 0.3) * 0.08;
   sfx.shot(); buzz([30, 20, 20]);
   setTimeout(() => { if (S.phase === 'play' || S.phase === 'end') { sfx.pump(); S.pumpT = 1; } }, 260);
   smoke(S.aim.x, S.aim.y);
@@ -403,7 +408,8 @@ function splash(x, y, k = 1){
 function finishDuck(d, hit){
   d.state = 'gone';
   S.results.push(hit);
-  if (!hit) { S.combo = 0; sfx.escape(); }
+  if (hit) S.dog.queue.push({ x: d.x, type: d.type });
+  if (!hit) { S.combo = 0; sfx.escape(); if (S.dog.mode === 'hide') { S.dog.mode = 'laugh'; S.dog.t = 0; S.dog.x = W * 0.3; S.dog.y = H - 0.12 * U; sfx.laugh(); } }
   hud();
   if (S.results.length >= DUCKS && S.phase === 'play') { S.phase = 'end'; setTimeout(endRound, 900); }
 }
@@ -426,6 +432,7 @@ function endRound(){
 }
 function newRound(keepScore){
   Object.assign(S, { shells: SHELLS, reloading: 0, spawned: 0, results: [], ducks: [], feathers: [], puffs: [], rings: [], pops: [], splashes: [], combo: 0, phase: 'play', spawnT: 60, recoil: 0, flash: 0, slow: 1, slowT: 1, focus: null, zoom: 1, casings: [], fish: [], tracer: null });
+  Object.assign(S.dog, { mode: 'hide', t: 0, duck: null, queue: [] });
   if (!keepScore) Object.assign(S, { score: 0, shots: 0, hits: 0, maxCombo: 0, doubles: 0 });
   buildScenery();
   $('endOv').hidden = true; $('startOv').hidden = true; $('reloadTxt').textContent = '';
@@ -458,6 +465,21 @@ function step(){
   for (const m of SC.motes) { m.x += 0.15 * k; m.y += Math.sin(S.tt * 1.3 + m.ph) * 0.25; if (m.x > W + 5) m.x = -5; }
   S.recoil *= 0.86; S.flash *= 0.7; S.shake *= 0.84; S.pumpT *= 0.9;
   S.slow += (S.slowT - S.slow) * 0.2;
+  // the gun is heavy: it chases the aim with a spring, climbs on recoil and settles with a wobble
+  { const g = S.gun, base = gunBase(), want = Math.atan2(S.aim.y - base.y, S.aim.x - base.x);
+    g.speed = Math.hypot(S.aim.x - g.lastAx, S.aim.y - g.lastAy); g.lastAx = S.aim.x; g.lastAy = S.aim.y;
+    g.angV += (want - g.ang) * 0.14; g.angV *= 0.72; g.ang += g.angV;
+    g.kickV += -g.kick * 0.18; g.kickV *= 0.78; g.kick += g.kickV;
+    g.rollV += -g.roll * 0.12; g.rollV *= 0.8; g.roll += g.rollV; }
+  // retriever
+  { const D = S.dog; D.t++;
+    const shore = H - 0.12 * U;
+    if (D.mode === 'hide' && D.queue.length && S.phase !== 'over') { const j = D.queue.shift(); D.duck = j; D.tx = Math.max(0.12 * W, Math.min(0.6 * W, j.x)); D.x = -0.1 * U; D.y = shore; D.mode = 'swim'; D.t = 0; sfx.bark(); splash(0.02 * U, shore, 0.5); }
+    else if (D.mode === 'swim') { D.x += (D.tx - D.x) * 0.04 + 1.2 * k * Math.sign(D.tx - D.x); if (Math.abs(D.tx - D.x) < 0.02 * U) { D.mode = 'dive'; D.t = 0; splash(D.x, shore, 0.8); } }
+    else if (D.mode === 'dive' && D.t > 40) { D.mode = 'show'; D.t = 0; sfx.bark(); splash(D.x, shore, 0.6); }
+    else if (D.mode === 'show' && D.t > 95) { D.mode = 'sink'; D.t = 0; }
+    else if (D.mode === 'sink' && D.t > 30) { D.mode = 'hide'; D.t = 0; D.duck = null; }
+    else if (D.mode === 'laugh' && D.t > 80) { D.mode = 'hide'; D.t = 0; } }
   S.zoom += ((S.focus ? 1.18 : 1) - S.zoom) * 0.12;
   for (const f of SC.fog) { f.x += f.v * k; if (f.x > W + f.w) f.x = -f.w; }
   SC.flock.x += SC.flock.v * k; if (SC.flock.x > W * 1.4) { SC.flock.x = -0.4 * W; SC.flock.y = HOR * (0.15 + Math.random() * 0.25); }
@@ -667,19 +689,27 @@ function drawDuck(d, now){
   if (d.type === 'golden') { ctx.globalCompositeOperation = 'lighter'; const gl = ctx.createRadialGradient(0, 0, r * 0.3, 0, 0, r * 2.4); gl.addColorStop(0, 'rgba(255,230,140,.35)'); gl.addColorStop(1, 'rgba(255,230,140,0)'); ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(0, 0, r * 2.4, 0, TAU); ctx.fill(); }
   ctx.restore();
 }
+function gunBase(){
+  // the hunter's shoulder: bottom right, shifting with the aim, breathing, and swaying more when the aim moves fast
+  const t = performance.now() / 1000, sway = Math.min(1, S.gun.speed / (0.05 * U));
+  return {
+    x: W * 0.72 + (S.aim.x - W / 2) * 0.06 + Math.sin(t * 0.7) * 0.004 * U + Math.sin(t * 5.3) * 0.006 * U * sway,
+    y: H + 0.08 * U + (S.aim.y - H / 2) * 0.03 + Math.sin(t * 1.1) * 0.005 * U + Math.cos(t * 4.1) * 0.005 * U * sway
+  };
+}
 function gunPose(){
-  // the gun sits at the bottom-right corner and swings toward the aim point
-  const bx = W * 0.72 + S.cam.x * 2, by = H + 0.08 * U + S.cam.y;
-  const ang = Math.atan2(S.aim.y - by, S.aim.x - bx);
-  const L = 0.5 * U, kick = S.recoil * 0.06 * U;
-  const mx = bx + Math.cos(ang) * (L - kick), my = by + Math.sin(ang) * (L - kick);
+  const b = gunBase(), g = S.gun, ang = g.ang + g.roll * 0.3;
+  const L = 0.5 * U, kick = g.kick;
+  const bx = b.x - Math.cos(ang) * kick, by = b.y - Math.sin(ang) * kick + g.roll * 0.02 * U;
+  const mx = bx + Math.cos(ang) * L, my = by + Math.sin(ang) * L;
   return { bx, by, ang, L, kick, mx, my };
 }
 function drawGun(now){
   const g = gunPose(), L = g.L, w = 0.05 * U;
+  const pumpK = S.pumpT > 0.05 ? Math.sin(Math.min(1, (1 - S.pumpT) * 1.6) * Math.PI) : 0;
   ctx.save();
-  ctx.translate(g.bx - Math.cos(g.ang) * g.kick, g.by - Math.sin(g.ang) * g.kick + S.pumpT * 0.01 * U);
-  ctx.rotate(g.ang);
+  ctx.translate(g.bx, g.by + pumpK * 0.012 * U);
+  ctx.rotate(g.ang - pumpK * 0.035);
   // stock
   const sg = ctx.createLinearGradient(0, -w, 0, w); sg.addColorStop(0, '#8a5a30'); sg.addColorStop(0.5, '#5a3418'); sg.addColorStop(1, '#2f1a0a');
   ctx.fillStyle = sg;
@@ -694,15 +724,22 @@ function drawGun(now){
   ctx.strokeStyle = '#1a1c20'; ctx.lineWidth = w * 0.18; ctx.beginPath(); ctx.arc(0.22 * L, w * 1.2, w * 0.7, Math.PI, TAU, true); ctx.stroke();
   ctx.strokeStyle = '#3a3d44'; ctx.lineWidth = w * 0.12; ctx.beginPath(); ctx.moveTo(0.2 * L, w * 0.9); ctx.lineTo(0.19 * L, w * 1.5); ctx.stroke();
   // pump fore-end, slides back with the pump animation
-  const pump = S.pumpT > 0.05 ? Math.sin(Math.min(1, (1 - S.pumpT)) * Math.PI) * 0.08 * L : 0;
+  const pump = pumpK * 0.09 * L;
   const pg = ctx.createLinearGradient(0, -w, 0, w); pg.addColorStop(0, '#7a4a28'); pg.addColorStop(0.5, '#4a2a12'); pg.addColorStop(1, '#2a1608');
   ctx.fillStyle = pg; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(0.5 * L - pump, -w * 0.7, 0.2 * L, w * 1.4, w * 0.25) : ctx.rect(0.5 * L - pump, -w * 0.7, 0.2 * L, w * 1.4); ctx.fill();
   ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 1; for (let i = 1; i < 6; i++) { ctx.beginPath(); ctx.moveTo(0.5 * L - pump + i * 0.033 * L, -w * 0.6); ctx.lineTo(0.5 * L - pump + i * 0.033 * L, w * 0.6); ctx.stroke(); }
+  // rear hand on the grip
+  ctx.fillStyle = '#6b4a2e'; ctx.beginPath(); ctx.ellipse(0.2 * L, w * 0.75, w * 0.55, w * 0.5, 0.3, 0, TAU); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,.3)'; ctx.lineWidth = 1; for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(0.2 * L + i * w * 0.18 - w * 0.15, w * 0.95, w * 0.18, Math.PI, TAU); ctx.stroke(); }
   // barrel and magazine tube
   const bgd = ctx.createLinearGradient(0, -w * 0.5, 0, w * 0.5); bgd.addColorStop(0, '#9aa0aa'); bgd.addColorStop(0.3, '#40454d'); bgd.addColorStop(0.7, '#1c1f24'); bgd.addColorStop(1, '#0a0b0e');
   ctx.fillStyle = bgd; ctx.fillRect(0.46 * L, -w * 0.42, 0.56 * L, w * 0.5);
   ctx.fillStyle = '#23262c'; ctx.fillRect(0.46 * L, w * 0.12, 0.5 * L, w * 0.36);
   ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.fillRect(0.5 * L, -w * 0.36, 0.5 * L, w * 0.08);
+  // front hand gripping the fore-end, sliding with the pump
+  ctx.fillStyle = '#6b4a2e'; ctx.beginPath(); ctx.ellipse(0.6 * L - pump, w * 0.55, w * 0.75, w * 0.5, 0.15, 0, TAU); ctx.fill();
+  ctx.fillStyle = '#5a3d24'; for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.ellipse(0.52 * L - pump + i * w * 0.32, w * 0.05 + i * w * 0.04, w * 0.14, w * 0.42, 0.1, 0, TAU); ctx.fill(); }
+  ctx.strokeStyle = '#2a2d33'; ctx.lineWidth = w * 0.12; ctx.beginPath(); ctx.moveTo(0.46 * L - pump, w * 0.5); ctx.lineTo(0.46 * L - pump, w * 1.1); ctx.stroke();
   // bead sight
   ctx.fillStyle = '#f2c641'; ctx.beginPath(); ctx.arc(1.0 * L, -w * 0.5, w * 0.1, 0, TAU); ctx.fill();
   // muzzle
@@ -722,7 +759,7 @@ function drawGun(now){
 }
 function drawCrosshair(){
   if (S.phase !== 'play' || (touchy && S.recoil < 0.05)) return;
-  const x = S.aim.x, y = S.aim.y, r = spread();
+  const x = S.aim.x, y = S.aim.y - S.gun.kick * 0.5, r = spread();
   ctx.save();
   ctx.strokeStyle = 'rgba(255,255,255,.22)'; ctx.lineWidth = 1; ctx.setLineDash([4, 6]);
   ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
@@ -763,6 +800,58 @@ function drawDock(now){
     for (let i = 0; i < 8; i++) { const yy = dy + dh + 0.02 * U + i * 0.02 * U, ww = (0.02 + 0.015 * i) * U * (0.7 + 0.3 * Math.sin(t * 2.5 + i * 1.3)); ctx.fillStyle = 'rgba(255,190,100,' + (0.14 * (1 - i / 8)).toFixed(2) + ')'; ctx.beginPath(); ctx.ellipse(lx + Math.sin(t * 1.1 + i) * 0.01 * U, yy, ww, 1.5, 0, 0, TAU); ctx.fill(); }
     ctx.restore();
   } else { ctx.fillStyle = '#d9d2bf'; ctx.fillRect(lx - 0.015 * U, ly - 0.04 * U, 0.03 * U, 0.03 * U); }
+}
+function drawDog(now){
+  const D = S.dog; if (D.mode === 'hide') return;
+  const t = now / 1000, u = U, shore = H - 0.12 * u;
+  let y = shore, bob = Math.sin(t * 6) * 0.006 * u, lift = 0;
+  if (D.mode === 'swim') { lift = 0.03 * u; }
+  else if (D.mode === 'dive') { lift = Math.max(-0.2 * u, 0.03 * u - D.t * 0.012 * u); }
+  else if (D.mode === 'show') { const k = Math.min(1, D.t / 14), e = 1 - Math.pow(1 - k, 3); lift = 0.16 * u * e + Math.abs(Math.sin(D.t * 0.3)) * 0.02 * u; bob = 0; }
+  else if (D.mode === 'sink') { lift = 0.16 * u - D.t * 0.012 * u; }
+  else if (D.mode === 'laugh') { const k = Math.min(1, D.t / 12), e = 1 - Math.pow(1 - k, 3); lift = 0.15 * u * e - (D.t > 60 ? (D.t - 60) * 0.01 * u : 0); bob = Math.abs(Math.sin(D.t * 0.5)) * 0.015 * u; }
+  const dir = D.mode === 'swim' ? Math.sign(D.tx - D.x) || 1 : 1;
+  ctx.save();
+  // clip to the water so the dog sinks into it
+  ctx.beginPath(); ctx.rect(-W, -H, 3 * W, shore + 0.035 * u + H); ctx.clip();
+  ctx.translate(D.x, y - lift + bob); ctx.scale(dir, 1);
+  const r = 0.05 * u;
+  // wake while swimming
+  if (D.mode === 'swim') { ctx.strokeStyle = 'rgba(230,240,255,.5)'; ctx.lineWidth = 2; for (let i = 1; i <= 3; i++) { ctx.beginPath(); ctx.moveTo(-r * 0.5 - i * r * 0.6, lift * 0.8 - 0.01 * u + i * 3); ctx.lineTo(-r * 2.5 - i * r * 0.8, lift * 0.8 - 0.01 * u + i * 6); ctx.stroke(); } }
+  // body
+  const bg = ctx.createLinearGradient(0, -r, 0, r); bg.addColorStop(0, '#b8783f'); bg.addColorStop(1, '#6e4320');
+  ctx.fillStyle = bg; ctx.beginPath(); ctx.ellipse(-r * 0.4, r * 0.3, r * 1.3, r * 0.75, 0, 0, TAU); ctx.fill();
+  // tail wagging
+  ctx.strokeStyle = '#8a5a30'; ctx.lineWidth = r * 0.22; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(-r * 1.5, r * 0.1); ctx.quadraticCurveTo(-r * 2.1, -r * 0.3 + Math.sin(t * 14) * r * 0.4, -r * 2.3, -r * 0.6 + Math.sin(t * 14) * r * 0.5); ctx.stroke();
+  // neck and head
+  ctx.strokeStyle = '#a86c38'; ctx.lineWidth = r * 0.6; ctx.beginPath(); ctx.moveTo(r * 0.5, r * 0.1); ctx.lineTo(r * 0.9, -r * 0.6); ctx.stroke();
+  const hg = ctx.createRadialGradient(r * 0.8, -r * 1.0, r * 0.1, r * 1.0, -r * 0.8, r * 0.8); hg.addColorStop(0, '#c98a4a'); hg.addColorStop(1, '#8a5a30');
+  ctx.fillStyle = hg; ctx.beginPath(); ctx.ellipse(r * 1.0, -r * 0.85, r * 0.62, r * 0.55, 0, 0, TAU); ctx.fill();
+  // snout
+  ctx.fillStyle = '#c98a4a'; ctx.beginPath(); ctx.ellipse(r * 1.55, -r * 0.65, r * 0.4, r * 0.28, 0.1, 0, TAU); ctx.fill();
+  ctx.fillStyle = '#1b1405'; ctx.beginPath(); ctx.ellipse(r * 1.9, -r * 0.72, r * 0.12, r * 0.09, 0, 0, TAU); ctx.fill();
+  // floppy ear
+  ctx.fillStyle = '#6e4320'; ctx.beginPath(); ctx.ellipse(r * 0.6, -r * 0.6 + Math.sin(t * 8) * r * 0.05, r * 0.22, r * 0.5, 0.3, 0, TAU); ctx.fill();
+  // eye, happy when showing off or laughing
+  if (D.mode === 'show' || D.mode === 'laugh') { ctx.strokeStyle = '#1b1405'; ctx.lineWidth = r * 0.07; ctx.beginPath(); ctx.arc(r * 1.15, -r * 0.95, r * 0.1, Math.PI, TAU); ctx.stroke(); }
+  else { ctx.fillStyle = '#1b1405'; ctx.beginPath(); ctx.arc(r * 1.15, -r * 0.95, r * 0.07, 0, TAU); ctx.fill(); }
+  if (D.mode === 'laugh') { ctx.fillStyle = '#3a1a1a'; ctx.beginPath(); ctx.ellipse(r * 1.5, -r * 0.45, r * 0.22, r * 0.14 + Math.abs(Math.sin(D.t * 0.5)) * r * 0.1, 0.1, 0, TAU); ctx.fill(); ctx.fillStyle = '#e07a8a'; ctx.beginPath(); ctx.ellipse(r * 1.5, -r * 0.38, r * 0.1, r * 0.07, 0, 0, TAU); ctx.fill(); }
+  // the retrieved duck held in the mouth
+  if (D.duck && (D.mode === 'show' || D.mode === 'sink')) {
+    const T = TYPES[D.duck.type], dr = r * 0.5;
+    ctx.save(); ctx.translate(r * 1.7, -r * 0.5); ctx.rotate(0.5);
+    ctx.fillStyle = T.body; ctx.beginPath(); ctx.ellipse(0, 0, dr * 1.1, dr * 0.6, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = T.head; ctx.beginPath(); ctx.arc(dr * 1.1, dr * 0.3, dr * 0.38, 0, TAU); ctx.fill();
+    ctx.fillStyle = T.beak; ctx.beginPath(); ctx.moveTo(dr * 1.4, dr * 0.25); ctx.lineTo(dr * 1.9, dr * 0.45); ctx.lineTo(dr * 1.4, dr * 0.5); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = T.wing; ctx.beginPath(); ctx.moveTo(-dr * 0.8, 0); ctx.lineTo(-dr * 1.5, -dr * 0.5); ctx.lineTo(-dr * 1.4, dr * 0.2); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+  // water drops shaking off
+  if (D.mode === 'show' && D.t < 25) { ctx.fillStyle = 'rgba(220,235,255,.8)'; for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.arc((Math.random() - 0.5) * r * 3, -r * 0.5 - Math.random() * r * 1.5, 1.5, 0, TAU); ctx.fill(); } }
+  ctx.restore();
+  // ripples at the surface
+  if (D.mode !== 'laugh') { ctx.strokeStyle = 'rgba(230,240,255,.35)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(D.x, shore + 0.03 * u, r * 1.8 + Math.sin(t * 3) * r * 0.2, r * 0.35, 0, 0, TAU); ctx.stroke(); }
 }
 function draw(now){
   ctx.save();
@@ -824,6 +913,7 @@ function draw(now){
     ctx.restore();
   }
   drawDock(now);
+  drawDog(now);
   drawReeds(now);
   for (const c of S.casings) {
     ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(c.rot);

@@ -36,6 +36,19 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:
 .shells i{width:12px;height:30px;border-radius:5px 5px 3px 3px;background:linear-gradient(#e0533f 0 70%,#c9a25a 70%);box-shadow:inset 0 0 0 1px rgba(0,0,0,.3);transition:opacity .2s,transform .2s}
 .shells i.off{opacity:.2;transform:translateY(4px)}
 .reload{font-size:12px;color:var(--gold);font-weight:800;min-height:1.2em}
+.missions{position:fixed;left:10px;top:calc(env(safe-area-inset-top,0px) + 66px);display:grid;gap:4px;pointer-events:none;max-width:46vw}
+.missions div{background:var(--panel);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border:1px solid var(--line);border-radius:10px;padding:4px 10px;font-size:12px;font-weight:800;display:flex;gap:8px;align-items:center;transition:background .3s,transform .3s}
+.missions div i{font-style:normal;width:16px;height:16px;border-radius:50%;border:1.5px solid var(--muted);display:grid;place-items:center;font-size:10px;flex:none}
+.missions div.done{background:rgba(60,110,50,.7);border-color:rgba(242,198,65,.6)}
+.missions div.done i{background:var(--gold);color:#241a02;border-color:var(--gold)}
+.missions div.fail{opacity:.45;text-decoration:line-through}
+.missions b{color:var(--gold);margin-inline-start:auto;font-variant-numeric:tabular-nums}
+.power{position:fixed;right:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 110px);background:var(--panel);border:1px solid var(--gold);border-radius:12px;padding:4px 12px;font-size:13px;font-weight:900;color:var(--gold);pointer-events:none}
+.boss{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 66px);transform:translateX(-50%);width:min(60vw,320px);pointer-events:none;text-align:center;font-size:13px;font-weight:900;color:var(--gold);text-shadow:0 1px 4px rgba(0,0,0,.9)}
+.boss div{height:10px;border-radius:6px;background:rgba(0,0,0,.5);border:1px solid var(--line);overflow:hidden;margin-top:3px}
+.boss div span{display:block;height:100%;background:linear-gradient(90deg,#e0473a,#f2c641);transition:width .2s}
+.ml{font-size:13px!important;text-align:start;display:grid;gap:4px;margin-bottom:14px!important}
+.ml span{display:flex;gap:8px}.ml span.ok{color:var(--gold)}
 .over{position:fixed;inset:0;display:grid;place-items:center;padding-inline:16px;background:rgba(10,12,24,.45);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
 .panel{background:linear-gradient(180deg,#2a2236,#1b1826);border:1px solid var(--line);border-radius:22px;padding:22px 24px 24px;text-align:center;max-width:340px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.5);animation:pop .35s cubic-bezier(.2,1.4,.4,1)}
 @keyframes pop{from{transform:scale(.85);opacity:.4}to{transform:none;opacity:1}}
@@ -72,6 +85,10 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:
   <button id="mute" class="icon" aria-label="كتم الصوت"></button>
 </div>
 
+<div class="missions" id="missions"></div>
+<div class="power" id="power" hidden></div>
+<div class="boss" id="bossBar" hidden><span id="bossName">الإوزة الزعيم</span><div><span id="bossHp"></span></div></div>
+
 <div class="foot">
   <div class="hint" id="hint"></div>
   <div class="ducks" id="ducks"></div>
@@ -88,8 +105,11 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:
       <li><b>البط الأخضر</b> 100 نقطة، <b>البني</b> أسرع و200، <b>الذهبي</b> 500.</li>
       <li><b>الإصابات المتتالية</b> تضاعف النقاط حتى ×4.</li>
       <li><b>طلقة واحدة تصيب بطتين</b> تعطيك مكافأة.</li>
-      <li>اضغط على الطلقات في الأسفل أو زر <b>R</b> للتلقيم.</li>
+      <li><b>المهام</b> في كل جولة تعطيك نجوماً و+500 لكل مهمة.</li>
+      <li>لا تُصب <b>اللقلق والبومة</b>، فهما محميّان: −300.</li>
+      <li>أسقط <b>الصناديق</b> لتحصل على خردق واسع أو حركة بطيئة أو نقاط مضاعفة.</li>
     </ul>
+    <p id="medals" class="stats"></p>
     <button id="startBtn">ابدأ الصيد</button>
   </div>
 </div>
@@ -101,6 +121,7 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:
     <div class="stars" id="stars"><i>★</i><i>★</i><i>★</i></div>
     <p class="total"><b id="final">0</b> نقطة</p>
     <p class="stats" id="stats"></p>
+    <p class="ml" id="mlist"></p>
     <div class="btns">
       <button id="nextBtn">الجولة التالية</button>
       <button id="retryBtn" class="ghost">إعادة الجولة</button>
@@ -125,8 +146,24 @@ const THEMES = [
 const TYPES = {
   mallard: { pts: 100, speed: 1.0, size: 1.0, body: '#6b4a2e', head: '#1f7a3a', wing: '#4a3320', chest: '#8a5a3a', beak: '#f2c641' },
   teal:    { pts: 200, speed: 1.45, size: 0.85, body: '#8a6a4a', head: '#5a3a2a', wing: '#6a4a30', chest: '#c9a070', beak: '#e0a040' },
-  golden:  { pts: 500, speed: 1.7, size: 0.8, body: '#f2c641', head: '#f7d96a', wing: '#d9a520', chest: '#fff0b0', beak: '#e0533f' }
+  golden:  { pts: 500, speed: 1.7, size: 0.8, body: '#f2c641', head: '#f7d96a', wing: '#d9a520', chest: '#fff0b0', beak: '#e0533f' },
+  stork:   { pts: -300, speed: 0.7, size: 1.5, body: '#f4f1ea', head: '#f4f1ea', wing: '#2a2a30', chest: '#ffffff', beak: '#e0533f', bad: true },
+  owl:     { pts: -300, speed: 0.8, size: 1.1, body: '#8a7a66', head: '#a8988a', wing: '#5a4a3a', chest: '#d8cdb8', beak: '#f2c641', bad: true },
+  boss:    { pts: 2000, speed: 0.9, size: 2.6, body: '#6a7a8a', head: '#1b1f26', wing: '#3a4652', chest: '#e8e4da', beak: '#f2a540', boss: true }
 };
+const MISSIONS = [
+  { id: 'gold', text: 'أصب بطة ذهبية', test: s => s.goldHits >= 1 },
+  { id: 'clean', text: 'لا تُصب أي طائر محمي', test: s => s.badHits === 0, late: true },
+  { id: 'double', text: 'أصب بطتين بطلقة واحدة', test: s => s.doubles >= 1 },
+  { id: 'combo4', text: 'سلسلة 4 إصابات متتالية', test: s => s.maxCombo >= 4 },
+  { id: 'acc', text: 'دقة 70% أو أكثر', test: s => s.shots >= 5 && s.hits / s.shots >= 0.7, late: true },
+  { id: 'crate', text: 'أسقط صندوقين', test: s => s.crates >= 2 },
+  { id: 'diver', text: 'أصب بطة بعد غطسها', test: s => s.diverHits >= 1 },
+  { id: 'flock', text: 'أصب سرباً كاملاً', test: s => s.flockFull >= 1 },
+  { id: 'fast', text: 'أصب 3 بطات خلال 10 ثوانٍ', test: s => s.fast3 },
+  { id: 'all', text: 'لا تدع أي بطة تهرب', test: s => s.results.length === DUCKS && s.results.every(Boolean), late: true },
+  { id: 'boss', text: 'اهزم الإوزة الزعيم', test: s => s.bossDown, bossOnly: true }
+];
 
 function loadNum(k){ try { return Number(localStorage.getItem(k)) || 0; } catch(e) { return 0; } }
 function saveNum(k, v){ try { localStorage.setItem(k, String(v)); } catch(e) {} }
@@ -136,6 +173,8 @@ const S = {
   shells: SHELLS, reloading: 0, spawned: 0, results: [], ducks: [], feathers: [], puffs: [], rings: [], pops: [], splashes: [],
   aim: { x: 0, y: 0 }, recoil: 0, flash: 0, shake: 0, tt: 0, spawnT: 90, shots: 0, hits: 0, doubles: 0,
   muted: loadNum('duckMuted') === 1, pumpT: 0, cam: { x: 0, y: 0 }, slow: 1, slowT: 1, focus: null, zoom: 1, casings: [], fish: [], tracer: null,
+  goldHits: 0, badHits: 0, crates: 0, diverHits: 0, flockFull: 0, fast3: false, hitTimes: [], bossDown: false, boss: null, missions: [], medals: loadNum('duckMedals'),
+  power: null, powerT: 0, crateList: [], crateT: 400, flockBad: {},
   gun: { ang: -1.2, angV: 0, kick: 0, kickV: 0, roll: 0, rollV: 0, lastAx: 0, lastAy: 0, speed: 0 },
   dog: { mode: 'hide', x: 0, y: 0, tx: 0, t: 0, duck: null, queue: [] }
 };
@@ -339,7 +378,7 @@ function reload(){
   setTimeout(() => { S.reloading = 0; $('reloadTxt').textContent = ''; hud(); }, 220 + missing * 190 + 420);
   hud();
 }
-const spread = () => 0.055 * U;
+const spread = () => 0.055 * U * (S.power === 'wide' ? 1.9 : 1);
 function fire(){
   if (S.reloading) return;
   if (S.shells <= 0) { sfx.empty(); $('reloadTxt').textContent = 'فارغة! اضغط R أو الطلقات للتلقيم'; reload(); return; }
@@ -351,8 +390,17 @@ function fire(){
   smoke(S.aim.x, S.aim.y);
   { const g = gunPose(); S.tracer = { x0: g.mx, y0: g.my, x1: S.aim.x, y1: S.aim.y, life: 7, max: 7 }; }
   setTimeout(() => { const g = gunPose(); S.casings.push({ x: g.bx + Math.cos(g.ang) * 0.36 * g.L, y: g.by + Math.sin(g.ang) * 0.36 * g.L, vx: (-2 - Math.random() * 2) * U / 400, vy: (-5 - Math.random() * 2) * U / 400, rot: g.ang, vr: 0.3 + Math.random() * 0.3, life: 90 }); }, 260);
-  const hits = [];
-  for (const d of S.ducks) if (d.state === 'fly' && Math.hypot(d.x - S.aim.x, d.y - S.aim.y) < spread() + d.r * 0.8) hits.push(d);
+  for (const c of S.crateList) if (c.state === 'fall' && Math.hypot(c.x - S.aim.x, c.y - S.aim.y) < spread() + c.r) { c.state = 'open'; c.t = 0; givePower(c.kind); S.rings.push({ x: c.x, y: c.y, r: spread() * 1.4, life: 22, max: 22 }); S.pops.push({ x: c.x, y: c.y - 0.05 * U, text: POWER[c.kind].name, sub: '', life: 60, max: 60, gold: true }); }
+  const hits = [], bad = [];
+  for (const d of S.ducks) if (d.state === 'fly' && Math.hypot(d.x - S.aim.x, d.y - S.aim.y) < spread() + d.r * 0.8) (TYPES[d.type].bad ? bad : hits).push(d);
+  // the boss soaks up pellets until its health runs out
+  for (let i = hits.length - 1; i >= 0; i--) { const d = hits[i]; if (d.hp && --d.hp > 0) { hits.splice(i, 1); feathers(d); sfx.hit(); d.flinch = 12; $('bossHp').style.width = (d.hp / d.maxHp * 100) + '%'; S.pops.push({ x: d.x, y: d.y - d.r, text: d.hp + '/' + d.maxHp, sub: '', life: 40, max: 40 }); } }
+  for (const d of bad) { d.state = 'hit'; d.hitT = 0; d.vx *= 0.3; d.vy = -0.4 * U / 400; d.spin = 0.2; feathers(d); S.badHits++; S.combo = 0; S.score = Math.max(0, S.score - 300); S.flash = 1.2; S.badFlash = 1; S.pops.push({ x: d.x, y: d.y - d.r, text: '−300', sub: 'طائر محمي!', life: 80, max: 80, bad: true }); sfx.hit(); buzz([60, 40, 60]); }
+  if (bad.length) { checkMissions(false); hud(); }
+  // nearby divers hear the shot and plunge
+  if (!hits.length) for (const d of S.ducks) if (d.state === 'fly' && d.diver && !d.dove && Math.hypot(d.x - S.aim.x, d.y - S.aim.y) < spread() * 4) { d.state = 'diving'; d.dove = true; d.vy = 3 * U / 400; d.vx *= 0.4; sfx.quack(1, 1.2); }
+  const dbl = S.power === 'double';
+  if (S.power && S.power !== 'slow') { if (--S.powerT <= 0) { S.power = null; $('power').hidden = true; } else $('power').textContent = POWER[S.power].name + ' · ' + S.powerT + ' طلقات'; }
   if (!hits.length) {
     S.combo = 0;
     if (S.aim.y > HOR) { splash(S.aim.x, S.aim.y, 0.6); }
@@ -363,12 +411,18 @@ function fire(){
   S.combo++; S.maxCombo = Math.max(S.maxCombo, S.combo);
   const mult = Math.min(4, 1 + Math.floor((S.combo - 1) / 2));
   let total = 0;
-  for (const d of hits) { d.state = 'hit'; d.hitT = 0; d.vx *= 0.3; d.vy = -0.4 * U / 400; d.spin = (Math.random() - 0.5) * 0.4; total += TYPES[d.type].pts; feathers(d); }
+  let sub0 = '';
+  let sub = hits.length > 1 ? 'ضربة مزدوجة!' : TYPES[hits[0].type] === TYPES.golden ? 'بطة ذهبية!' : TYPES[hits[0].type].boss ? 'سقطت الإوزة الزعيم!' : hits[0].dove ? 'بعد الغطس!' : '';
+  for (const d of hits) { d.state = 'hit'; d.hitT = 0; d.vx *= 0.3; d.vy = -0.4 * U / 400; d.spin = (Math.random() - 0.5) * 0.4; total += TYPES[d.type].pts; feathers(d); if (d.type === 'golden') S.goldHits++; if (d.dove) S.diverHits++; if (d.hp === 0 || TYPES[d.type].boss) { S.bossDown = true; S.boss = null; $('bossBar').hidden = true; S.shake = 20; } }
   total *= mult;
-  let sub = hits.length > 1 ? 'ضربة مزدوجة!' : TYPES[hits[0].type] === TYPES.golden ? 'بطة ذهبية!' : '';
+  if (dbl) total *= 2;
+  S.hitTimes.push(performance.now()); S.hitTimes = S.hitTimes.filter(t => performance.now() - t < 10000); if (S.hitTimes.length >= 3) S.fast3 = true;
+  for (const d of hits) if (d.flock) { const mates = S.ducks.filter(o => o.flock === d.flock); if (mates.every(o => o.state !== 'fly' && o.state !== 'diving' && o.state !== 'under') && !S.flockBad[d.flock]) { S.flockFull++; sub0 = 'سرب كامل! +400'; total += 400; } }
   if (hits.length > 1) { total += 300; S.doubles++; }
   if (mult > 1) sub = (sub ? sub + ' ' : '') + '×' + mult;
+  if (sub0) sub = sub0;
   S.score += total; S.hits += hits.length;
+  checkMissions(false);
   const hx = hits.reduce((a, d) => a + d.x, 0) / hits.length, hy = hits.reduce((a, d) => a + d.y, 0) / hits.length;
   S.pops.push({ x: hx, y: hy - 0.05 * U, text: '+' + total, sub, life: 70, max: 70, gold: hits.some(d => d.type === 'golden') || hits.length > 1 });
   S.rings.push({ x: hx, y: hy, r: spread() * 1.4, life: 22, max: 22 });
@@ -379,15 +433,49 @@ function fire(){
 }
 
 /* ---------- ducks ---------- */
+let flockSeq = 0;
+function makeBird(type, dir, x, y, extra){
+  const T = TYPES[type], lvl = S.level;
+  const r = 0.045 * U * T.size, sp = (0.9 + 0.15 * lvl) * T.speed * U / 400;
+  return Object.assign({ type, dir, x, y, vx: dir * sp, vy: 0, r, ph: Math.random() * TAU, flap: Math.random() * TAU, state: 'fly', t: 0, quackT: 60 + Math.random() * 200, turnT: 100 + Math.random() * 120, counts: !T.bad && !T.boss }, extra || {});
+}
 function spawnDuck(){
-  const lvl = S.level, roll = Math.random();
-  const type = roll < 0.08 + 0.02 * lvl ? 'golden' : roll < 0.35 + 0.05 * lvl ? 'teal' : 'mallard';
-  const T = TYPES[type], dir = Math.random() < 0.5 ? 1 : -1;
-  const r = 0.045 * U * T.size, sp = (0.9 + 0.18 * lvl) * T.speed * U / 400;
+  const lvl = S.level, roll = Math.random(), dir = Math.random() < 0.5 ? 1 : -1;
   const y = HOR * (0.15 + Math.random() * 0.6);
-  S.ducks.push({ type, dir, x: dir > 0 ? -r * 3 : W + r * 3, y, vx: dir * sp, vy: 0, r, ph: Math.random() * TAU, flap: Math.random() * TAU, state: 'fly', t: 0, quackT: 60 + Math.random() * 200, turnT: 100 + Math.random() * 120 });
+  // a flock of three counts as three ducks of the round
+  if (lvl >= 2 && roll < 0.14 && S.spawned <= DUCKS - 3) {
+    const id = ++flockSeq, type = Math.random() < 0.5 ? 'teal' : 'mallard', r = 0.045 * U * TYPES[type].size;
+    for (let i = 0; i < 3; i++) { const row = Math.ceil(i / 2), side = i % 2 ? 1 : -1; S.ducks.push(makeBird(type, dir, (dir > 0 ? -r * 3 : W + r * 3) - dir * row * r * 2.2, y + side * row * r * 1.6, { flock: id, turnT: 1e9 })); }
+    S.spawned += 3; hud(); return;
+  }
+  const type = roll < 0.08 + 0.02 * lvl ? 'golden' : roll < 0.35 + 0.05 * lvl ? 'teal' : 'mallard';
+  const r = 0.045 * U * TYPES[type].size;
+  S.ducks.push(makeBird(type, dir, dir > 0 ? -r * 3 : W + r * 3, y, { diver: lvl >= 2 && Math.random() < 0.3 }));
   S.spawned++;
   hud();
+}
+function spawnProtected(){
+  const type = SC.th.night ? 'owl' : 'stork', dir = Math.random() < 0.5 ? 1 : -1, r = 0.045 * U * TYPES[type].size;
+  S.ducks.push(makeBird(type, dir, dir > 0 ? -r * 3 : W + r * 3, HOR * (0.1 + Math.random() * 0.5), { turnT: 1e9, quackT: 1e9 }));
+}
+function spawnBoss(){
+  const r = 0.045 * U * TYPES.boss.size;
+  S.boss = makeBird('boss', 1, -r * 3, HOR * 0.3, { hp: 6, maxHp: 6, turnT: 1e9, quackT: 100 });
+  S.ducks.push(S.boss);
+  $('bossBar').hidden = false; $('bossHp').style.width = '100%';
+  sfx.quack(3, 0.5); S.shake = 8;
+}
+function spawnCrate(){
+  const kinds = ['wide', 'slow', 'double'], kind = kinds[Math.floor(Math.random() * 3)];
+  S.crateList.push({ kind, x: W * (0.15 + Math.random() * 0.7), y: -0.1 * U, vy: 0.55 * U / 400, sw: Math.random() * TAU, r: 0.03 * U, state: 'fall' });
+}
+const POWER = { wide: { name: 'خردق واسع', c: '#4ab3ff' }, slow: { name: 'حركة بطيئة', c: '#b48cff' }, double: { name: 'نقاط ×2', c: '#f2c641' } };
+function givePower(kind){
+  S.power = kind; S.powerT = kind === 'slow' ? 420 : 3; S.crates++;
+  $('power').hidden = false; $('power').textContent = POWER[kind].name + (kind === 'slow' ? '' : ' · 3 طلقات');
+  if (kind === 'slow') S.slowT = 0.45;
+  sfx.combo(4);
+  checkMissions(false);
 }
 function feathers(d){
   const T = TYPES[d.type];
@@ -407,20 +495,25 @@ function splash(x, y, k = 1){
 }
 function finishDuck(d, hit){
   d.state = 'gone';
+  if (!hit && d.flock) S.flockBad[d.flock] = true;
+  if (!d.counts) { if (hit && !TYPES[d.type].bad) S.dog.queue.push({ x: d.x, type: d.type }); return; }
   S.results.push(hit);
+  checkMissions(false);
   if (hit) S.dog.queue.push({ x: d.x, type: d.type });
   if (!hit) { S.combo = 0; sfx.escape(); if (S.dog.mode === 'hide') { S.dog.mode = 'laugh'; S.dog.t = 0; S.dog.x = W * 0.3; S.dog.y = H - 0.12 * U; sfx.laugh(); } }
   hud();
   if (S.results.length >= DUCKS && S.phase === 'play') { S.phase = 'end'; setTimeout(endRound, 900); }
 }
 function endRound(){
+  checkMissions(true);
   const hits = S.results.filter(Boolean).length, ok = hits >= need();
-  const st = hits >= DUCKS ? 3 : hits >= need() + 1 ? 2 : ok ? 1 : 0;
+  const st = ok ? S.missions.filter(x => x.done).length : 0;
+  $('mlist').innerHTML = S.missions.map(x => '<span class="' + (x.done ? 'ok' : '') + '">' + (x.done ? '✓' : '✗') + ' ' + x.m.text + '</span>').join('');
   const record = S.score > S.best;
   if (record) { S.best = S.score; saveNum('duckBest', S.best); }
   hud();
   $('final').textContent = S.score;
-  $('stats').textContent = 'أصبت ' + hits + ' من ' + DUCKS + ' · دقة ' + (S.shots ? Math.round(S.hits / S.shots * 100) : 0) + '% · أطول سلسلة ' + S.maxCombo;
+  $('stats').textContent = 'أصبت ' + hits + ' من ' + DUCKS + ' · دقة ' + (S.shots ? Math.round(S.hits / S.shots * 100) : 0) + '% · أطول سلسلة ' + S.maxCombo + (S.badHits ? ' · طيور محمية: ' + S.badHits : '');
   $('endLv').textContent = 'الجولة ' + S.level + ' · ' + theme().name + ' · المطلوب ' + need();
   $('endTitle').textContent = !ok ? 'هربت البطّات' : record ? 'رقم قياسي جديد!' : st >= 2 ? 'صيد موفّق' : 'انتهت الجولة';
   [...$('stars').children].forEach((el, i) => el.classList.toggle('on', i < st));
@@ -433,7 +526,10 @@ function endRound(){
 function newRound(keepScore){
   Object.assign(S, { shells: SHELLS, reloading: 0, spawned: 0, results: [], ducks: [], feathers: [], puffs: [], rings: [], pops: [], splashes: [], combo: 0, phase: 'play', spawnT: 60, recoil: 0, flash: 0, slow: 1, slowT: 1, focus: null, zoom: 1, casings: [], fish: [], tracer: null });
   Object.assign(S.dog, { mode: 'hide', t: 0, duck: null, queue: [] });
-  if (!keepScore) Object.assign(S, { score: 0, shots: 0, hits: 0, maxCombo: 0, doubles: 0 });
+  Object.assign(S, { goldHits: 0, badHits: 0, crates: 0, diverHits: 0, flockFull: 0, fast3: false, hitTimes: [], bossDown: false, boss: null, power: null, powerT: 0, crateList: [], crateT: 300 + Math.random() * 300, flockBad: {}, shots: 0, hits: 0, maxCombo: 0, doubles: 0 });
+  if (!keepScore) S.score = 0;
+  pickMissions();
+  $('bossBar').hidden = true; $('power').hidden = true;
   buildScenery();
   $('endOv').hidden = true; $('startOv').hidden = true; $('reloadTxt').textContent = '';
   hud();
@@ -442,6 +538,28 @@ $('startBtn').onclick = () => { audioInit(); sfx.click(); S.level = 1; newRound(
 $('nextBtn').onclick = () => { sfx.click(); S.level++; newRound(true); };
 $('retryBtn').onclick = () => { sfx.click(); newRound(false); };
 
+function pickMissions(){
+  const bossRound = S.level % 5 === 0;
+  const pool = MISSIONS.filter(m => !m.bossOnly);
+  const chosen = [];
+  if (bossRound) chosen.push(MISSIONS.find(m => m.bossOnly));
+  while (chosen.length < 3) { const m = pool[Math.floor(Math.random() * pool.length)]; if (!chosen.includes(m)) chosen.push(m); }
+  S.missions = chosen.map(m => ({ m, done: false, fail: false }));
+  renderMissions();
+}
+function renderMissions(){
+  $('missions').innerHTML = S.missions.map(x => '<div class="' + (x.done ? 'done' : x.fail ? 'fail' : '') + '"><i>' + (x.done ? '✓' : x.fail ? '✗' : '') + '</i>' + x.m.text + '<b>+500</b></div>').join('');
+}
+function checkMissions(final){
+  let changed = false;
+  for (const x of S.missions) {
+    if (x.done || x.fail) continue;
+    if (x.m.late && !final) { if (x.m.id === 'clean' && S.badHits > 0) { x.fail = true; changed = true; } if (x.m.id === 'all' && S.results.some(r => !r)) { x.fail = true; changed = true; } continue; }
+    if (x.m.test(S)) { x.done = true; changed = true; S.score += 500; S.medals++; saveNum('duckMedals', S.medals); S.pops.push({ x: W / 2, y: H * 0.3, text: '+500', sub: 'مهمة: ' + x.m.text, life: 90, max: 90, gold: true }); sfx.combo(5); }
+    else if (final) { x.fail = true; changed = true; }
+  }
+  if (changed) { renderMissions(); hud(); }
+}
 function hud(){
   $('level').textContent = S.level;
   $('score').textContent = S.score;
@@ -454,6 +572,7 @@ function hud(){
   if (sh.children.length !== SHELLS) sh.innerHTML = '<i></i>'.repeat(SHELLS);
   [...sh.children].forEach((el, i) => el.classList.toggle('off', i >= S.shells));
   const left = DUCKS - S.results.length;
+  $('medals').textContent = S.medals ? 'أوسمة المهام: ' + S.medals : '';
   $('hint').textContent = S.phase === 'play' ? (S.results.length === 0 && S.shots === 0 ? 'صوّب واضغط لتطلق النار' : 'المطلوب ' + need() + ' إصابات · باقي ' + left) : '';
 }
 
@@ -494,13 +613,25 @@ function step(){
 
   if (S.phase === 'play') {
     const maxAtOnce = S.level >= 3 ? 3 : S.level >= 2 ? 2 : 1;
-    const flying = S.ducks.filter(d => d.state === 'fly').length;
+    const flying = S.ducks.filter(d => d.state === 'fly' && d.counts).length;
     if (S.spawned < DUCKS && flying < maxAtOnce && --S.spawnT <= 0) { spawnDuck(); S.spawnT = Math.max(30, 110 - S.level * 10) + Math.random() * 60; }
+    if (!S.ducks.some(d => TYPES[d.type].bad) && Math.random() < 0.0025 + 0.0008 * S.level) spawnProtected();
+    if (--S.crateT <= 0) { spawnCrate(); S.crateT = 500 + Math.random() * 500; }
+    if (S.level % 5 === 0 && !S.boss && !S.bossDown && S.results.length >= 3) spawnBoss();
+    if (S.power === 'slow') { S.slowT = S.focus ? 0.3 : 0.45; if (--S.powerT <= 0) { S.power = null; S.slowT = 1; $('power').hidden = true; } }
+    S.badFlash = (S.badFlash || 0) * 0.9;
   }
+  for (const c of S.crateList) {
+    if (c.state === 'fall') { c.sw += 0.03; c.y += c.vy; c.x += Math.sin(c.sw) * 0.4; if (c.y > HOR + 0.05 * U) { c.state = 'sunk'; splash(c.x, c.y, 0.5); } }
+    else if (c.state === 'open') c.t++;
+  }
+  S.crateList = S.crateList.filter(c => c.state === 'fall' || (c.state === 'open' && c.t < 30));
   for (const d of S.ducks) {
     d.t++;
     if (d.state === 'fly') {
-      d.flap += 0.28 * TYPES[d.type].speed;
+      d.flap += (TYPES[d.type].boss ? 0.12 : TYPES[d.type].bad ? 0.16 : 0.28) * TYPES[d.type].speed;
+      if (d.flinch) d.flinch--;
+      if (TYPES[d.type].boss) { if (d.x > W - d.r * 1.5) { d.vx = -Math.abs(d.vx); d.dir = -1; } if (d.x < d.r * 1.5 && d.t > 60) { d.vx = Math.abs(d.vx); d.dir = 1; } }
       d.vy = Math.sin(d.t * 0.04 + d.ph) * 0.9 * k + (d.climb || 0);
       if (--d.turnT <= 0) { d.turnT = 80 + Math.random() * 140; d.climb = (Math.random() - 0.5) * 1.6 * k; if (Math.random() < 0.18 && d.t > 60) { d.vx *= -1; d.dir *= -1; } }
       if (d.y < 0.06 * H) d.climb = Math.abs(d.climb || 0.5 * k);
@@ -508,7 +639,12 @@ function step(){
       d.x += d.vx; d.y += d.vy;
       if (--d.quackT <= 0) { d.quackT = 200 + Math.random() * 400; sfx.quack(1 + Math.floor(Math.random() * 3), TYPES[d.type].size); }
       if (Math.abs(Math.sin(d.flap)) > 0.98 && Math.random() < 0.3) sfx.flap();
-      if ((d.dir > 0 && d.x > W + d.r * 3) || (d.dir < 0 && d.x < -d.r * 3)) finishDuck(d, false);
+      if (!TYPES[d.type].boss && ((d.dir > 0 && d.x > W + d.r * 3) || (d.dir < 0 && d.x < -d.r * 3))) finishDuck(d, false);
+    } else if (d.state === 'diving') {
+      d.vy += 0.15 * k; d.x += d.vx; d.y += d.vy;
+      if (d.y >= HOR + 0.02 * U) { splash(d.x, d.y, 0.8); d.state = 'under'; d.t = 0; d.underT = 70 + Math.random() * 50; }
+    } else if (d.state === 'under') {
+      if (d.t > d.underT) { d.x = W * (0.15 + Math.random() * 0.7); d.y = HOR + 0.01 * U; d.state = 'fly'; d.climb = -1.4 * k; d.vy = -2 * k; d.vx = (Math.random() < 0.5 ? 1 : -1) * Math.abs(d.vx) * 2; d.dir = Math.sign(d.vx); d.t = 1; splash(d.x, d.y, 0.8); sfx.quack(2, 1.1); }
     } else if (d.state === 'hit') {
       d.hitT++;
       if (d.hitT > 14) { d.state = 'fall'; d.vy = 1.5 * k; }
@@ -686,6 +822,10 @@ function drawDuck(d, now){
   wing(wg, false);
   ctx.strokeStyle = 'rgba(0,0,0,.2)'; ctx.lineWidth = 1; for (let i = 1; i <= 3; i++) { ctx.beginPath(); ctx.moveTo(-r * 0.1 * i, -r * 0.2 * i); ctx.lineTo(r * 0.05 - r * 0.08 * i, -r * 1.7 + r * 0.15 * i); ctx.stroke(); }
   ctx.restore();
+  if (d.type === 'stork') { ctx.strokeStyle = '#e0533f'; ctx.lineWidth = r * 0.08; ctx.beginPath(); ctx.moveTo(-r * 0.2, r * 0.5); ctx.lineTo(-r * 0.9, r * 1.4); ctx.moveTo(r * 0.1, r * 0.5); ctx.lineTo(-r * 0.6, r * 1.45); ctx.stroke(); ctx.fillStyle = '#e0533f'; ctx.beginPath(); ctx.moveTo(r * 1.25, -r * 0.5); ctx.lineTo(r * 2.3, -r * 0.3); ctx.lineTo(r * 1.25, -r * 0.3); ctx.closePath(); ctx.fill(); }
+  if (d.type === 'owl') { ctx.fillStyle = '#f6f0e2'; ctx.beginPath(); ctx.arc(r * 0.9, -r * 0.55, r * 0.17, 0, TAU); ctx.arc(r * 1.15, -r * 0.55, r * 0.17, 0, TAU); ctx.fill(); ctx.fillStyle = '#f2c641'; ctx.beginPath(); ctx.arc(r * 0.9, -r * 0.55, r * 0.1, 0, TAU); ctx.arc(r * 1.15, -r * 0.55, r * 0.1, 0, TAU); ctx.fill(); ctx.fillStyle = '#1b1405'; ctx.beginPath(); ctx.arc(r * 0.9, -r * 0.55, r * 0.05, 0, TAU); ctx.arc(r * 1.15, -r * 0.55, r * 0.05, 0, TAU); ctx.fill(); ctx.fillStyle = T.head; ctx.beginPath(); ctx.moveTo(r * 0.65, -r * 0.8); ctx.lineTo(r * 0.75, -r * 1.1); ctx.lineTo(r * 0.9, -r * 0.85); ctx.moveTo(r * 1.15, -r * 0.85); ctx.lineTo(r * 1.3, -r * 1.1); ctx.lineTo(r * 1.4, -r * 0.8); ctx.fill(); }
+  if (TYPES[d.type].bad) { ctx.strokeStyle = 'rgba(255,90,70,.7)'; ctx.lineWidth = 2; ctx.setLineDash([5, 5]); ctx.beginPath(); ctx.arc(0, -r * 0.2, r * 2.1, 0, TAU); ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle = 'rgba(255,90,70,.9)'; ctx.font = '900 ' + Math.round(r * 0.6) + 'px Cairo, system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.save(); ctx.scale(d.dir, 1); ctx.fillText('محمي', 0, -r * 2.4); ctx.restore(); }
+  if (TYPES[d.type].boss) { if (d.flinch) { ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = 'rgba(255,80,60,' + (d.flinch / 12 * 0.5).toFixed(2) + ')'; ctx.beginPath(); ctx.ellipse(0, 0, r * 1.3, r * 0.8, 0, 0, TAU); ctx.fill(); ctx.globalCompositeOperation = 'source-over'; } ctx.fillStyle = '#f2c641'; ctx.beginPath(); ctx.moveTo(r * 0.7, -r * 0.85); ctx.lineTo(r * 0.8, -r * 1.2); ctx.lineTo(r * 0.95, -r * 0.95); ctx.lineTo(r * 1.05, -r * 1.25); ctx.lineTo(r * 1.15, -r * 0.95); ctx.lineTo(r * 1.3, -r * 1.2); ctx.lineTo(r * 1.35, -r * 0.85); ctx.closePath(); ctx.fill(); }
   if (d.type === 'golden') { ctx.globalCompositeOperation = 'lighter'; const gl = ctx.createRadialGradient(0, 0, r * 0.3, 0, 0, r * 2.4); gl.addColorStop(0, 'rgba(255,230,140,.35)'); gl.addColorStop(1, 'rgba(255,230,140,0)'); ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(0, 0, r * 2.4, 0, TAU); ctx.fill(); }
   ctx.restore();
 }
@@ -884,6 +1024,22 @@ function draw(now){
     if (d.state === 'fall' || d.state === 'hit') { ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.beginPath(); ctx.ellipse(d.x, Math.max(d.y + 0.08 * U, HOR + 0.04 * U), d.r * 0.9, d.r * 0.2, 0, 0, TAU); ctx.fill(); }
     drawDuck(d, now);
   }
+  for (const c of S.crateList) {
+    const r = c.r;
+    if (c.state === 'fall') {
+      // parachute
+      ctx.fillStyle = POWER[c.kind].c; ctx.beginPath(); ctx.arc(c.x, c.y - r * 2.6, r * 1.8, Math.PI, TAU); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.beginPath(); ctx.arc(c.x, c.y - r * 2.6, r * 1.8, Math.PI, Math.PI * 1.5); ctx.lineTo(c.x, c.y - r * 2.6); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 1; for (const sx of [-1.7, -0.6, 0.6, 1.7]) { ctx.beginPath(); ctx.moveTo(c.x + sx * r, c.y - r * 2.6); ctx.lineTo(c.x, c.y - r * 0.8); ctx.stroke(); }
+    }
+    const k = c.state === 'open' ? 1 + c.t / 10 : 1;
+    ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(Math.sin(c.sw) * 0.15); ctx.scale(k, k); ctx.globalAlpha = c.state === 'open' ? Math.max(0, 1 - c.t / 30) : 1;
+    const cg = ctx.createLinearGradient(-r, -r, r, r); cg.addColorStop(0, '#c99a5a'); cg.addColorStop(1, '#7a5428');
+    ctx.fillStyle = cg; ctx.fillRect(-r, -r * 0.8, r * 2, r * 1.6);
+    ctx.strokeStyle = POWER[c.kind].c; ctx.lineWidth = 3; ctx.strokeRect(-r, -r * 0.8, r * 2, r * 1.6); ctx.beginPath(); ctx.moveTo(0, -r * 0.8); ctx.lineTo(0, r * 0.8); ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.font = '900 ' + Math.round(r * 1.1) + 'px Cairo, system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(c.kind === 'wide' ? '◎' : c.kind === 'slow' ? '⏱' : '×2', 0, 0);
+    ctx.restore();
+  }
   for (const f of S.feathers) {
     ctx.save(); ctx.translate(f.x, f.y); ctx.rotate(f.rot); ctx.globalAlpha = Math.min(1, f.life / 25);
     ctx.fillStyle = f.c; ctx.beginPath();
@@ -932,6 +1088,7 @@ function draw(now){
   drawGun(now);
   ctx.fillStyle = SC.vig; ctx.fillRect(-W, -H, 3 * W, 3 * H);
   if (S.flash > 0.3 && !REDUCED) { ctx.fillStyle = 'rgba(255,230,180,' + (0.25 * S.flash).toFixed(2) + ')'; ctx.fillRect(-W, -H, 3 * W, 3 * H); }
+  if (S.badFlash > 0.05) { ctx.fillStyle = 'rgba(220,40,40,' + (0.35 * S.badFlash).toFixed(2) + ')'; ctx.fillRect(-W, -H, 3 * W, 3 * H); }
   ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.direction = 'rtl';
   for (const q of S.pops) {
     const k = 1 - q.life / q.max;
@@ -941,7 +1098,7 @@ function draw(now){
     ctx.save(); ctx.translate(q.x, y); ctx.scale(sc, sc);
     ctx.font = '900 34px Cairo, system-ui, sans-serif'; ctx.direction = 'ltr';
     ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(20,16,30,.75)'; ctx.strokeText(q.text, 0, 0);
-    ctx.fillStyle = q.gold ? '#f2c641' : '#fbf4e6'; ctx.fillText(q.text, 0, 0);
+    ctx.fillStyle = q.bad ? '#ff6a5a' : q.gold ? '#f2c641' : '#fbf4e6'; ctx.fillText(q.text, 0, 0);
     ctx.direction = 'rtl';
     if (q.sub) { ctx.font = '800 17px Cairo, system-ui, sans-serif'; ctx.lineWidth = 4; ctx.strokeText(q.sub, 0, 24); ctx.fillStyle = '#f2c641'; ctx.fillText(q.sub, 0, 24); }
     ctx.restore();

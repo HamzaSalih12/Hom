@@ -135,7 +135,7 @@ const S = {
   phase: 'start', level: 1, score: 0, best: loadNum('duckBest'), combo: 0, maxCombo: 0,
   shells: SHELLS, reloading: 0, spawned: 0, results: [], ducks: [], feathers: [], puffs: [], rings: [], pops: [], splashes: [],
   aim: { x: 0, y: 0 }, recoil: 0, flash: 0, shake: 0, tt: 0, spawnT: 90, shots: 0, hits: 0, doubles: 0,
-  muted: loadNum('duckMuted') === 1, pumpT: 0, cam: { x: 0, y: 0 }
+  muted: loadNum('duckMuted') === 1, pumpT: 0, cam: { x: 0, y: 0 }, slow: 1, slowT: 1, focus: null, zoom: 1, casings: [], fish: [], tracer: null
 };
 const theme = () => THEMES[(S.level - 1) % THEMES.length];
 const need = () => Math.min(5 + S.level, 9);
@@ -174,6 +174,9 @@ function buildScenery(){
   for (let i = 0; i < 90; i++) stars.push({ x: Math.random() * W, y: Math.random() * HOR * 0.8, r: 0.5 + Math.random() * 1.3, ph: Math.random() * TAU });
   const lilies = [];
   for (let i = 0; i < 9; i++) lilies.push({ x: Math.random() * W, y: HOR + 0.05 * U + Math.pow(Math.random(), 1.4) * (H - HOR - 0.1 * U), r: (0.012 + Math.random() * 0.016) * U, flower: Math.random() < 0.4 });
+  const fog = [];
+  for (let i = 0; i < 7; i++) fog.push({ y: HOR - 0.02 * U + i * 0.012 * U, w: (0.5 + Math.random() * 0.6) * W, x: Math.random() * W, v: 0.05 + Math.random() * 0.08, a: 0.06 + Math.random() * 0.08 });
+  const flock = { x: -0.3 * W, y: HOR * (0.2 + Math.random() * 0.2), v: 0.25 + Math.random() * 0.2, n: 7 };
   const motes = [];
   for (let i = 0; i < 28; i++) motes.push({ x: Math.random() * W, y: HOR - Math.random() * 0.5 * U, ph: Math.random() * TAU, r: 0.8 + Math.random() * 1.6 });
   const sky = ctx.createLinearGradient(0, 0, 0, HOR);
@@ -182,7 +185,7 @@ function buildScenery(){
   water.addColorStop(0, th.water[0]); water.addColorStop(1, th.water[1]);
   const vig = ctx.createRadialGradient(W / 2, H * 0.45, U * 0.45, W / 2, H * 0.45, Math.hypot(W, H) * 0.62);
   vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, th.night ? 'rgba(0,0,12,.55)' : 'rgba(10,10,30,.3)');
-  SC = { th, far, mid, trees, reeds, clouds, stars, lilies, motes, sky, water, vig, sun: { x: W * th.sunX, y: HOR - th.sunH * U, r: 0.07 * U } };
+  SC = { th, far, mid, trees, reeds, clouds, stars, lilies, motes, fog, flock, sky, water, vig, sun: { x: W * th.sunX, y: HOR - th.sunH * U, r: 0.07 * U } };
 }
 
 /* ---------- audio: everything synthesised, with reverb and echo so the gun sounds outdoors ---------- */
@@ -341,6 +344,8 @@ function fire(){
   sfx.shot(); buzz([30, 20, 20]);
   setTimeout(() => { if (S.phase === 'play' || S.phase === 'end') { sfx.pump(); S.pumpT = 1; } }, 260);
   smoke(S.aim.x, S.aim.y);
+  { const g = gunPose(); S.tracer = { x0: g.mx, y0: g.my, x1: S.aim.x, y1: S.aim.y, life: 7, max: 7 }; }
+  setTimeout(() => { const g = gunPose(); S.casings.push({ x: g.bx + Math.cos(g.ang) * 0.36 * g.L, y: g.by + Math.sin(g.ang) * 0.36 * g.L, vx: (-2 - Math.random() * 2) * U / 400, vy: (-5 - Math.random() * 2) * U / 400, rot: g.ang, vr: 0.3 + Math.random() * 0.3, life: 90 }); }, 260);
   const hits = [];
   for (const d of S.ducks) if (d.state === 'fly' && Math.hypot(d.x - S.aim.x, d.y - S.aim.y) < spread() + d.r * 0.8) hits.push(d);
   if (!hits.length) {
@@ -363,6 +368,7 @@ function fire(){
   S.pops.push({ x: hx, y: hy - 0.05 * U, text: '+' + total, sub, life: 70, max: 70, gold: hits.some(d => d.type === 'golden') || hits.length > 1 });
   S.rings.push({ x: hx, y: hy, r: spread() * 1.4, life: 22, max: 22 });
   sfx.hit(); if (S.combo >= 2) sfx.combo(S.combo); setTimeout(() => sfx.fall(), 150);
+  if (!REDUCED) { S.slowT = 0.3; S.focus = { x: hx, y: hy }; setTimeout(() => { S.slowT = 1; S.focus = null; }, 420); }
   hud();
   if (S.shells === 0) setTimeout(reload, 500);
 }
@@ -419,7 +425,7 @@ function endRound(){
   sfx.fanfare(st);
 }
 function newRound(keepScore){
-  Object.assign(S, { shells: SHELLS, reloading: 0, spawned: 0, results: [], ducks: [], feathers: [], puffs: [], rings: [], pops: [], splashes: [], combo: 0, phase: 'play', spawnT: 60, recoil: 0, flash: 0 });
+  Object.assign(S, { shells: SHELLS, reloading: 0, spawned: 0, results: [], ducks: [], feathers: [], puffs: [], rings: [], pops: [], splashes: [], combo: 0, phase: 'play', spawnT: 60, recoil: 0, flash: 0, slow: 1, slowT: 1, focus: null, zoom: 1, casings: [], fish: [], tracer: null });
   if (!keepScore) Object.assign(S, { score: 0, shots: 0, hits: 0, maxCombo: 0, doubles: 0 });
   buildScenery();
   $('endOv').hidden = true; $('startOv').hidden = true; $('reloadTxt').textContent = '';
@@ -451,6 +457,16 @@ function step(){
   for (const c of SC.clouds) { c.x += c.v * k; const sw = c.s * 0.12 * U * 3; if (c.x > W + sw) c.x = -sw; }
   for (const m of SC.motes) { m.x += 0.15 * k; m.y += Math.sin(S.tt * 1.3 + m.ph) * 0.25; if (m.x > W + 5) m.x = -5; }
   S.recoil *= 0.86; S.flash *= 0.7; S.shake *= 0.84; S.pumpT *= 0.9;
+  S.slow += (S.slowT - S.slow) * 0.2;
+  S.zoom += ((S.focus ? 1.18 : 1) - S.zoom) * 0.12;
+  for (const f of SC.fog) { f.x += f.v * k; if (f.x > W + f.w) f.x = -f.w; }
+  SC.flock.x += SC.flock.v * k; if (SC.flock.x > W * 1.4) { SC.flock.x = -0.4 * W; SC.flock.y = HOR * (0.15 + Math.random() * 0.25); }
+  for (const c of S.casings) { c.vy += 0.3 * k; c.x += c.vx; c.y += c.vy; c.rot += c.vr; c.life--; }
+  S.casings = S.casings.filter(c => c.life > 0 && c.y < H + 40);
+  if (S.tracer && --S.tracer.life <= 0) S.tracer = null;
+  if (Math.random() < 0.004 && S.fish.length < 2) S.fish.push({ x: W * 0.15 + Math.random() * W * 0.7, y: HOR + 0.08 * U + Math.random() * (H - HOR) * 0.5, t: 0, dir: Math.random() < 0.5 ? 1 : -1 });
+  for (const f of S.fish) { f.t++; if (f.t === 1) sfx.flap(); if (f.t === 44) { splash(f.x + f.dir * 0.06 * U, f.y, 0.5); } }
+  S.fish = S.fish.filter(f => f.t < 46);
   S.cam.x += ((S.aim.x - W / 2) * 0.03 - S.cam.x) * 0.08;
   S.cam.y += ((S.aim.y - H / 2) * 0.03 - S.cam.y) * 0.08;
 
@@ -523,6 +539,20 @@ function drawScene(now){
   sg.addColorStop(0, '#ffffff'); sg.addColorStop(1, th.sunC);
   ctx.fillStyle = sg; ctx.beginPath(); ctx.arc(sun.x, sun.y, sun.r, 0, TAU); ctx.fill();
   if (th.night) { ctx.fillStyle = 'rgba(80,80,110,.18)'; [[-0.3, -0.2, 0.22], [0.25, 0.1, 0.15], [-0.05, 0.35, 0.12]].forEach(([dx, dy, rr]) => { ctx.beginPath(); ctx.arc(sun.x + dx * sun.r, sun.y + dy * sun.r, rr * sun.r, 0, TAU); ctx.fill(); }); }
+  if (!th.night && !REDUCED) {
+    ctx.globalCompositeOperation = 'lighter';
+    const cx = W / 2, cy = H / 2;
+    [[0.35, 0.05, '255,230,160'], [0.6, 0.025, '200,240,255'], [0.9, 0.04, '255,200,220'], [1.25, 0.018, '255,255,220']].forEach(([f, r, c]) => {
+      const x = sun.x + (cx - sun.x) * f, y = sun.y + (cy - sun.y) * f, rr = r * U;
+      const fg = ctx.createRadialGradient(x, y, 0, x, y, rr); fg.addColorStop(0, 'rgba(' + c + ',.16)'); fg.addColorStop(0.7, 'rgba(' + c + ',.07)'); fg.addColorStop(1, 'rgba(' + c + ',0)');
+      ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(x, y, rr, 0, TAU); ctx.fill();
+    });
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  // a distant flock in a V
+  { const fl = SC.flock; ctx.strokeStyle = th.night ? 'rgba(200,210,255,.25)' : 'rgba(30,30,45,.5)'; ctx.lineWidth = 1.3; ctx.lineCap = 'round';
+    for (let i = 0; i < fl.n; i++) { const row = Math.ceil(i / 2), side = i % 2 ? 1 : -1, bx = fl.x - row * 0.02 * U, by = fl.y + side * row * 0.012 * U * (i ? 1 : 0), s = 0.008 * U, f = Math.sin(t * 8 + i) * s * 0.6;
+      ctx.beginPath(); ctx.moveTo(bx - s, by - f); ctx.quadraticCurveTo(bx - s * 0.4, by - s * 0.3, bx, by); ctx.quadraticCurveTo(bx + s * 0.4, by - s * 0.3, bx + s, by - f); ctx.stroke(); } }
   for (const c of SC.clouds) {
     const s = c.s * 0.12 * U, y = c.y * HOR;
     ctx.save(); ctx.translate(px * 0.6, 0);
@@ -562,6 +592,13 @@ function drawScene(now){
   ctx.strokeStyle = 'rgba(255,255,255,.12)'; ctx.lineWidth = 1;
   for (let i = 0; i < 10; i++) { const yy = HOR + 0.03 * U + i * i * 0.004 * U; const xo = Math.sin(t * 0.8 + i) * 0.03 * U; ctx.beginPath(); ctx.moveTo(xo + W * 0.1 * (i % 3), yy); ctx.lineTo(xo + W * 0.1 * (i % 3) + W * (0.15 + 0.05 * i), yy); ctx.stroke(); }
   ctx.restore();
+  // mist drifting over the water
+  for (const f of SC.fog) {
+    const fg = ctx.createLinearGradient(f.x - f.w / 2, 0, f.x + f.w / 2, 0);
+    const col = th.night ? '150,170,220' : '255,250,240';
+    fg.addColorStop(0, 'rgba(' + col + ',0)'); fg.addColorStop(0.5, 'rgba(' + col + ',' + f.a + ')'); fg.addColorStop(1, 'rgba(' + col + ',0)');
+    ctx.fillStyle = fg; ctx.beginPath(); ctx.ellipse(f.x, f.y + Math.sin(t * 0.5 + f.y) * 2, f.w / 2, 0.012 * U, 0, 0, TAU); ctx.fill();
+  }
   for (const l of SC.lilies) {
     ctx.fillStyle = th.night ? '#1b3a2a' : '#3f8a4a';
     ctx.beginPath(); ctx.ellipse(l.x, l.y + Math.sin(t + l.x) * 1.5, l.r, l.r * 0.45, 0, 0.25, TAU - 0.25); ctx.lineTo(l.x, l.y); ctx.closePath(); ctx.fill();
@@ -594,9 +631,14 @@ function drawDuck(d, now){
   const bg = ctx.createRadialGradient(-r * 0.2, -r * 0.3, r * 0.1, 0, 0, r * 1.3);
   bg.addColorStop(0, T.chest); bg.addColorStop(0.55, T.body); bg.addColorStop(1, T.wing);
   const flap = d.state === 'fly' ? Math.sin(d.flap) : d.state === 'hit' ? Math.sin(d.hitT * 1.5) : 0.9;
+  const wing = (col, blur) => {
+    ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(r * 0.35, -r * 1.0, r * 0.15, -r * 1.8);
+    for (let i = 0; i < 4; i++) { const q = i / 4; ctx.lineTo(r * 0.15 - q * r * 0.7 - r * 0.08, -r * 1.8 + q * r * 0.5 - r * 0.15); ctx.lineTo(r * 0.15 - (q + 0.25) * r * 0.7, -r * 1.8 + (q + 0.25) * r * 0.5); }
+    ctx.lineTo(-r * 0.55, 0); ctx.closePath(); ctx.fill();
+    if (!blur) { ctx.fillStyle = d.type === 'golden' ? 'rgba(255,255,255,.35)' : 'rgba(40,90,200,.55)'; ctx.beginPath(); ctx.ellipse(-r * 0.15, -r * 0.55, r * 0.1, r * 0.3, -0.3, 0, TAU); ctx.fill(); }
+  };
   // far wing
-  ctx.save(); ctx.translate(-r * 0.1, -r * 0.15); ctx.rotate(-0.5 - flap * 0.9); ctx.scale(1, -1);
-  ctx.fillStyle = T.wing; ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(r * 0.3, -r * 1.0, r * 0.1, -r * 1.7); ctx.quadraticCurveTo(-r * 0.4, -r * 1.0, -r * 0.5, 0); ctx.closePath(); ctx.fill(); ctx.restore();
+  ctx.save(); ctx.translate(-r * 0.1, -r * 0.15); ctx.rotate(-0.5 - flap * 0.9); ctx.scale(1, -1); wing(T.wing, true); ctx.restore();
   // tail
   ctx.fillStyle = T.wing; ctx.beginPath(); ctx.moveTo(-r * 0.9, 0); ctx.lineTo(-r * 1.5, -r * 0.35); ctx.lineTo(-r * 1.45, r * 0.15); ctx.closePath(); ctx.fill();
   // body
@@ -616,9 +658,10 @@ function drawDuck(d, now){
   // feet tucked
   ctx.strokeStyle = T.beak; ctx.lineWidth = r * 0.08; ctx.beginPath(); ctx.moveTo(-r * 0.1, r * 0.5); ctx.lineTo(-r * 0.35, r * 0.7); ctx.moveTo(r * 0.15, r * 0.5); ctx.lineTo(-r * 0.1, r * 0.72); ctx.stroke();
   // near wing
+  if (d.state === 'fly' && !REDUCED) { ctx.save(); ctx.translate(-r * 0.05, -r * 0.1); ctx.rotate(-0.4 + Math.sin(d.flap - 0.5) * 0.9); ctx.globalAlpha = 0.3; wing(T.wing, true); ctx.restore(); }
   ctx.save(); ctx.translate(-r * 0.05, -r * 0.1); ctx.rotate(-0.4 + flap * 0.9);
   const wg = ctx.createLinearGradient(0, 0, 0, -r * 1.8); wg.addColorStop(0, T.body); wg.addColorStop(1, T.wing);
-  ctx.fillStyle = wg; ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(r * 0.35, -r * 1.0, r * 0.1, -r * 1.8); ctx.quadraticCurveTo(-r * 0.45, -r * 1.0, -r * 0.55, 0); ctx.closePath(); ctx.fill();
+  wing(wg, false);
   ctx.strokeStyle = 'rgba(0,0,0,.2)'; ctx.lineWidth = 1; for (let i = 1; i <= 3; i++) { ctx.beginPath(); ctx.moveTo(-r * 0.1 * i, -r * 0.2 * i); ctx.lineTo(r * 0.05 - r * 0.08 * i, -r * 1.7 + r * 0.15 * i); ctx.stroke(); }
   ctx.restore();
   if (d.type === 'golden') { ctx.globalCompositeOperation = 'lighter'; const gl = ctx.createRadialGradient(0, 0, r * 0.3, 0, 0, r * 2.4); gl.addColorStop(0, 'rgba(255,230,140,.35)'); gl.addColorStop(1, 'rgba(255,230,140,0)'); ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(0, 0, r * 2.4, 0, TAU); ctx.fill(); }
@@ -692,11 +735,60 @@ function drawCrosshair(){
   ctx.fillStyle = hot ? '#ff6a4a' : '#f2c641'; ctx.beginPath(); ctx.arc(x, y, 1.8, 0, TAU); ctx.fill();
   ctx.restore();
 }
+function drawDock(now){
+  const th = SC.th, t = now / 1000, dx = -0.02 * U, dy = H - 0.16 * U, dw = 0.42 * U, dh = 0.05 * U;
+  // reflection first
+  ctx.save(); ctx.globalAlpha = 0.28; ctx.translate(0, (dy + dh) * 2); ctx.scale(1, -1);
+  ctx.fillStyle = '#5a3a1e'; ctx.fillRect(dx, dy, dw, dh); ctx.restore();
+  ctx.fillStyle = '#3a2414';
+  for (let i = 0; i < 4; i++) { const px = dx + 0.06 * U + i * 0.11 * U; ctx.fillRect(px - 0.012 * U, dy + dh * 0.5, 0.024 * U, 0.14 * U); }
+  const pg = ctx.createLinearGradient(0, dy, 0, dy + dh); pg.addColorStop(0, '#9a6a3a'); pg.addColorStop(1, '#5a3a1e');
+  ctx.fillStyle = pg; ctx.fillRect(dx, dy, dw, dh);
+  ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 1;
+  for (let i = 1; i < 10; i++) { ctx.beginPath(); ctx.moveTo(dx + i * dw / 10, dy); ctx.lineTo(dx + i * dw / 10, dy + dh); ctx.stroke(); }
+  ctx.fillStyle = 'rgba(255,230,180,.25)'; ctx.fillRect(dx, dy, dw, 2);
+  // lantern post
+  const lx = dx + dw - 0.04 * U, ly = dy - 0.22 * U;
+  ctx.fillStyle = '#3a2414'; ctx.fillRect(lx - 0.008 * U, ly, 0.016 * U, 0.22 * U);
+  ctx.fillStyle = '#2a2d33'; ctx.fillRect(lx - 0.025 * U, ly - 0.05 * U, 0.05 * U, 0.05 * U);
+  if (th.night || th.name === 'فجر' || th.name === 'غروب') {
+    const fl = 0.9 + Math.sin(t * 9) * 0.05 + Math.sin(t * 23) * 0.03;
+    const lg = ctx.createRadialGradient(lx, ly - 0.025 * U, 2, lx, ly - 0.025 * U, 0.18 * U * fl);
+    lg.addColorStop(0, 'rgba(255,200,110,.8)'); lg.addColorStop(0.3, 'rgba(255,180,90,.25)'); lg.addColorStop(1, 'rgba(255,170,80,0)');
+    ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = lg; ctx.beginPath(); ctx.arc(lx, ly - 0.025 * U, 0.18 * U * fl, 0, TAU); ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = '#ffe3a8'; ctx.fillRect(lx - 0.015 * U, ly - 0.04 * U, 0.03 * U, 0.03 * U);
+    // its light on the water
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 8; i++) { const yy = dy + dh + 0.02 * U + i * 0.02 * U, ww = (0.02 + 0.015 * i) * U * (0.7 + 0.3 * Math.sin(t * 2.5 + i * 1.3)); ctx.fillStyle = 'rgba(255,190,100,' + (0.14 * (1 - i / 8)).toFixed(2) + ')'; ctx.beginPath(); ctx.ellipse(lx + Math.sin(t * 1.1 + i) * 0.01 * U, yy, ww, 1.5, 0, 0, TAU); ctx.fill(); }
+    ctx.restore();
+  } else { ctx.fillStyle = '#d9d2bf'; ctx.fillRect(lx - 0.015 * U, ly - 0.04 * U, 0.03 * U, 0.03 * U); }
+}
 function draw(now){
   ctx.save();
   if (S.shake > 0.3) ctx.translate((Math.random() - 0.5) * S.shake, (Math.random() - 0.5) * S.shake + S.recoil * 0.02 * U);
+  if (S.zoom > 1.005 && S.focus) { const z = S.zoom, fx = S.focus.x, fy = S.focus.y; ctx.translate(W / 2, H / 2); ctx.scale(z, z); ctx.translate(-W / 2 - (fx - W / 2) * (1 - 1 / z) * 0.9, -H / 2 - (fy - H / 2) * (1 - 1 / z) * 0.9); }
   drawScene(now);
   const t = now / 1000;
+  // ducks mirrored in the water, broken by the ripples
+  ctx.save(); ctx.beginPath(); ctx.rect(-W, HOR, 3 * W, H); ctx.clip();
+  for (const d of S.ducks) {
+    const depth = HOR - d.y; if (depth > 0.5 * U) continue;
+    ctx.save(); ctx.globalAlpha = 0.22 * (1 - depth / (0.5 * U));
+    ctx.translate(d.x + Math.sin(t * 3 + d.y) * 3, HOR * 2 - d.y + Math.min(depth * 0.3, 0.06 * U)); ctx.scale(1, -0.7);
+    ctx.translate(-d.x, -d.y); drawDuck(d, now); ctx.restore();
+  }
+  ctx.restore();
+  for (const f of S.fish) {
+    const k = f.t / 46, a = Math.PI * k, jump = Math.sin(a) * 0.08 * U, fx = f.x + f.dir * k * 0.12 * U, fy = f.y - jump;
+    ctx.save(); ctx.translate(fx, fy); ctx.rotate(f.dir * (k - 0.5) * 2.2); ctx.scale(f.dir, 1);
+    const fg = ctx.createLinearGradient(0, -0.012 * U, 0, 0.012 * U); fg.addColorStop(0, '#9fb6c8'); fg.addColorStop(1, '#4a6a86');
+    ctx.fillStyle = fg; ctx.beginPath(); ctx.ellipse(0, 0, 0.03 * U, 0.011 * U, 0, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-0.028 * U, 0); ctx.lineTo(-0.045 * U, -0.012 * U); ctx.lineTo(-0.045 * U, 0.012 * U); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.5)'; ctx.beginPath(); ctx.ellipse(0.005 * U, -0.004 * U, 0.018 * U, 0.004 * U, 0, 0, TAU); ctx.fill();
+    ctx.restore();
+    if (f.t < 6) for (let i = 0; i < 3; i++) { ctx.fillStyle = 'rgba(220,235,255,.7)'; ctx.beginPath(); ctx.arc(f.x + (Math.random() - 0.5) * 0.04 * U, f.y - Math.random() * 0.03 * U, 1.5, 0, TAU); ctx.fill(); }
+  }
   // ducks, far ones first
   const ducks = [...S.ducks].sort((a, b) => a.r - b.r);
   for (const d of ducks) {
@@ -705,7 +797,11 @@ function draw(now){
   }
   for (const f of S.feathers) {
     ctx.save(); ctx.translate(f.x, f.y); ctx.rotate(f.rot); ctx.globalAlpha = Math.min(1, f.life / 25);
-    ctx.fillStyle = f.c; ctx.beginPath(); ctx.ellipse(0, 0, f.s, f.s * (f.drop ? 1 : 0.4), 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = f.c; ctx.beginPath();
+    if (f.drop) ctx.ellipse(0, 0, f.s, f.s, 0, 0, TAU);
+    else { ctx.moveTo(-f.s, 0); ctx.quadraticCurveTo(0, -f.s * 0.7, f.s * 1.2, 0); ctx.quadraticCurveTo(0, f.s * 0.7, -f.s, 0); }
+    ctx.fill();
+    if (!f.drop) { ctx.strokeStyle = 'rgba(0,0,0,.25)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(-f.s, 0); ctx.lineTo(f.s * 1.2, 0); ctx.stroke(); }
     ctx.restore();
   }
   ctx.globalAlpha = 1;
@@ -720,7 +816,23 @@ function draw(now){
     ctx.strokeStyle = 'rgba(255,235,150,' + (0.8 * (1 - k)).toFixed(2) + ')'; ctx.lineWidth = 2 + 5 * (1 - k);
     ctx.beginPath(); ctx.arc(r.x, r.y, r.r * (0.2 + 0.8 * e), 0, TAU); ctx.stroke();
   }
+  if (S.tracer) {
+    const tr = S.tracer, k = tr.life / tr.max;
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
+    ctx.strokeStyle = 'rgba(255,220,150,' + (0.5 * k).toFixed(2) + ')'; ctx.lineWidth = 5 * k; ctx.beginPath(); ctx.moveTo(tr.x0, tr.y0); ctx.lineTo(tr.x1, tr.y1); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,230,' + (0.9 * k).toFixed(2) + ')'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(tr.x0, tr.y0); ctx.lineTo(tr.x1, tr.y1); ctx.stroke();
+    ctx.restore();
+  }
+  drawDock(now);
   drawReeds(now);
+  for (const c of S.casings) {
+    ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(c.rot);
+    const cw = 0.03 * U, ch = 0.012 * U;
+    ctx.fillStyle = '#e0533f'; ctx.fillRect(-cw / 2, -ch / 2, cw * 0.72, ch);
+    ctx.fillStyle = '#d6b35a'; ctx.fillRect(cw * 0.22, -ch / 2, cw * 0.28, ch);
+    ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fillRect(-cw / 2, -ch / 2, cw, ch * 0.25);
+    ctx.restore();
+  }
   for (const q of S.puffs) {
     const k = q.life / q.max;
     const pg = ctx.createRadialGradient(q.x, q.y, 0, q.x, q.y, q.r);
@@ -737,9 +849,10 @@ function draw(now){
     const y = q.y - k * 40;
     ctx.globalAlpha = Math.min(1, q.life / 20);
     ctx.save(); ctx.translate(q.x, y); ctx.scale(sc, sc);
-    ctx.font = '900 34px Cairo, system-ui, sans-serif';
+    ctx.font = '900 34px Cairo, system-ui, sans-serif'; ctx.direction = 'ltr';
     ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(20,16,30,.75)'; ctx.strokeText(q.text, 0, 0);
     ctx.fillStyle = q.gold ? '#f2c641' : '#fbf4e6'; ctx.fillText(q.text, 0, 0);
+    ctx.direction = 'rtl';
     if (q.sub) { ctx.font = '800 17px Cairo, system-ui, sans-serif'; ctx.lineWidth = 4; ctx.strokeText(q.sub, 0, 24); ctx.fillStyle = '#f2c641'; ctx.fillText(q.sub, 0, 24); }
     ctx.restore();
   }
@@ -755,7 +868,7 @@ muteUI();
 hud();
 let last = performance.now(), acc = 0;
 function frame(now){
-  acc += Math.min(now - last, 100); last = now;
+  acc += Math.min(now - last, 100) * S.slow; last = now;
   while (acc >= STEP) { step(); acc -= STEP; }
   draw(now);
   requestAnimationFrame(frame);
